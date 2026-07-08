@@ -29,6 +29,9 @@ compose.desktop {
             }
             windows {
                 iconFile.set(project.file("packaging/icon.ico"))
+                menu = true
+                menuGroup = "DnDCombatManager"
+                shortcut = true
             }
             linux {
                 iconFile.set(project.file("packaging/icon.png"))
