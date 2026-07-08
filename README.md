@@ -39,12 +39,17 @@ L'application est écrite en **Kotlin Multiplatform** avec **Compose Multiplatfo
 
 ### Plateformes
 
-| Plateforme | Statut |
-|---|---|
-| Android | ✅ |
-| Bureau (Windows / macOS / Linux) | ✅ |
-| Web (Wasm / JS) | ✅ |
-| iOS | ✅ |
+> Statut de buildabilité **sur cette machine** (Linux, JDK + Android SDK installés).
+
+| Plateforme | Buildable ici             |
+|---|---------------------------|
+| Android | ✅                         |
+| Bureau — exécution (Linux) | ✅                         |
+| Bureau — installeur `.deb` (Linux) | ✅                         |
+| Bureau — installeur `.msi` (Windows) | ✅ |
+| Bureau — installeur `.dmg` (macOS) | ❌ (pas encore)            |
+| Web (Wasm / JS) | ✅                         |
+| iOS | ❌ (pas encore)            |
 
 ### Stack technique
 
@@ -125,12 +130,17 @@ The app is built with **Kotlin Multiplatform** and **Compose Multiplatform**: th
 
 ### Platforms
 
-| Platform | Status |
-|---|---|
-| Android | ✅ |
-| Desktop (Windows / macOS / Linux) | ✅ |
-| Web (Wasm / JS) | ✅ |
-| iOS | ✅ |
+> Buildability status **on this machine** (Linux, JDK + Android SDK installed).
+
+| Platform | Buildable here            |
+|---|---------------------------|
+| Android | ✅                         |
+| Desktop — run (Linux) | ✅                         |
+| Desktop — `.deb` installer (Linux) | ✅                         |
+| Desktop — `.msi` installer (Windows) | ✅  |
+| Desktop — `.dmg` installer (macOS) | ❌ (not yet)               |
+| Web (Wasm / JS) | ✅                         |
+| iOS | ❌ (not yet)               |
 
 ### Tech stack
 
