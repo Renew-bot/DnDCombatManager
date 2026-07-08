@@ -18,8 +18,27 @@ jobs:
       - name: Build MSI
         run: ./gradlew packageMsi
 
-      - name: Upload MSI artifact
+      - name: Upload unsigned MSI artifact
+        id: upload-unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-msi
+          path: '**/build/compose/binaries/main/msi/*.msi'
+
+      - name: Submit signing request to SignPath
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
+          organization-id: 'TODO-organization-id'
+          project-slug: 'TODO-project-slug'
+          signing-policy-slug: 'TODO-signing-policy-slug'
+          artifact-configuration-slug: 'TODO-artifact-configuration-slug'
+          github-artifact-id: '${{ steps.upload-unsigned.outputs.artifact-id }}'
+          wait-for-completion: true
+          output-artifact-directory: 'signed'
+
+      - name: Upload signed MSI artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-msi
-          path: '**/build/compose/binaries/main/msi/*.msi'
+          path: 'signed/*.msi'

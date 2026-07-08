@@ -10,14 +10,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,7 +53,12 @@ import com.example.dndcombatmanager.combat.theme.oklch
 fun CombatTrackerScreen() {
     val state = remember { CombatTrackerState() }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize().background(oklch(0.14f, 0.018f, 60f))) {
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(oklch(0.14f, 0.018f, 60f))
+            .windowInsetsPadding(WindowInsets.safeDrawing),
+    ) {
         val isNarrow = maxWidth < 880.dp
         val stackAttacks = maxWidth < 1300.dp
         val isHeaderCompact = maxWidth < 1300.dp
@@ -323,6 +331,7 @@ private fun FocusModal(
                 .fillMaxSize()
                 .background(oklch(0.10f, 0.01f, 60f, 0.75f))
                 .clickable { state.closeModal() }
+                .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(vertical = 40.dp, horizontal = 20.dp),
             contentAlignment = Alignment.TopCenter,
         ) {
