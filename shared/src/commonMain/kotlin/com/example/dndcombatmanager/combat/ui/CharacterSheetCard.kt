@@ -90,6 +90,7 @@ fun CharacterSheetCard(
     onEdit: (String) -> Unit,
     onDelete: (String) -> Unit,
     onSavePreset: (Character) -> Unit,
+    onPortraitChange: (String, String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val meta = typeMeta(character.type)
@@ -120,6 +121,11 @@ fun CharacterSheetCard(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    PortraitBox(
+                        portrait = character.portrait,
+                        onImageBytes = { bytes -> onPortraitChange(character.id, bytes.toPortraitString()) },
+                        onClear = { onPortraitChange(character.id, null) },
+                    )
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(
                             modifier = Modifier
@@ -361,9 +367,9 @@ fun CharacterSheetCard(
                                 )
                                 if (checked) {
                                     Text(
-                                        "...",
+                                        "+",
                                         color = oklch(0.70f, 0.13f, 200f),
-                                        fontFamily = Fonts.body, fontSize = 13.sp,
+                                        fontFamily = Fonts.body, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                                         textDecoration = TextDecoration.Underline,
                                         modifier = Modifier.clickable { infoCondition = name },
                                     )

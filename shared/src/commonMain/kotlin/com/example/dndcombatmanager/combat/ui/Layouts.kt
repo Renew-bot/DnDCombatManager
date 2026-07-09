@@ -82,6 +82,7 @@ fun CharacterAndAttacksPane(
                 onLegendaryUse = state::handleLegendaryUse, onLegendaryResUse = state::handleLegendaryResUse,
                 onSetExhaustion = state::handleSetExhaustion, onNotes = state::handleNotes,
                 onEdit = state::openEditForm, onDelete = state::requestDelete, onSavePreset = state::handleSavePreset,
+                onPortraitChange = state::handleSetPortrait,
                 modifier = Modifier.fillMaxWidth(),
             )
             AttacksPanelCard(
@@ -100,6 +101,7 @@ fun CharacterAndAttacksPane(
                 onLegendaryUse = state::handleLegendaryUse, onLegendaryResUse = state::handleLegendaryResUse,
                 onSetExhaustion = state::handleSetExhaustion, onNotes = state::handleNotes,
                 onEdit = state::openEditForm, onDelete = state::requestDelete, onSavePreset = state::handleSavePreset,
+                onPortraitChange = state::handleSetPortrait,
                 modifier = Modifier.weight(1.7f),
             )
             AttacksPanelCard(

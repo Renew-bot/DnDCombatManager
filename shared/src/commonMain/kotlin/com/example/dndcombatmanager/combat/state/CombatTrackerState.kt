@@ -264,6 +264,8 @@ class CombatTrackerState {
 
     fun handleNotes(id: String, text: String) = updateChar(id) { c -> c.copy(notes = text) }
 
+    fun handleSetPortrait(id: String, portrait: String?) = updateChar(id) { c -> c.copy(portrait = portrait) }
+
     fun handleSaveAttack(charId: String, attack: Attack) = updateChar(charId) { c ->
         val idx = c.attacks.indexOfFirst { it.id == attack.id }
         val nextAttacks = if (idx == -1) c.attacks + attack else c.attacks.mapIndexed { i, a -> if (i == idx) attack else a }
@@ -395,14 +397,14 @@ class CombatTrackerState {
         id = id, name = c.name, type = c.type, initiative = c.initiative, maxHp = c.maxHp, ac = c.ac,
         speed = c.speed, speedFly = c.speedFly, speedSwim = c.speedSwim, speedClimb = c.speedClimb,
         saves = c.saves, legendaryMax = c.legendaryMax, legendaryResMax = c.legendaryResMax,
-        attacks = c.attacks,
+        attacks = c.attacks, portrait = c.portrait,
     )
 
     private fun buildPresetFrom(id: String, fd: CharacterFormData): CharacterPreset = CharacterPreset(
         id = id, name = fd.name, type = fd.type, initiative = fd.initiative, maxHp = fd.maxHp, ac = fd.ac,
         speed = fd.speed, speedFly = fd.speedFly, speedSwim = fd.speedSwim, speedClimb = fd.speedClimb,
         saves = fd.saves, legendaryMax = fd.legendaryMax, legendaryResMax = fd.legendaryResMax,
-        attacks = fd.attacks,
+        attacks = fd.attacks, portrait = fd.portrait,
     )
 
     fun handleSavePreset(character: Character) {
@@ -440,6 +442,7 @@ class CombatTrackerState {
             saves = preset.saves, legendaryMax = preset.legendaryMax, legendaryCurrent = preset.legendaryMax,
             legendaryResMax = preset.legendaryResMax, legendaryResCurrent = preset.legendaryResMax,
             attacks = preset.attacks.mapIndexed { i, a -> a.copy(id = nextId("atk${i}_")) },
+            portrait = preset.portrait,
         )
         characters = characters + newChar
         if (activeId == null) activeId = id
@@ -496,6 +499,7 @@ class CombatTrackerState {
             saves = cp.saves, legendaryMax = cp.legendaryMax, legendaryCurrent = cp.legendaryMax,
             legendaryResMax = cp.legendaryResMax, legendaryResCurrent = cp.legendaryResMax,
             attacks = cp.attacks.mapIndexed { i, a -> a.copy(id = nextId("atk${i}_")) },
+            portrait = cp.portrait,
         )
     }
 
@@ -543,6 +547,7 @@ class CombatTrackerState {
             name = c.name, type = c.type, initiative = c.initiative, maxHp = c.maxHp, ac = c.ac, speed = c.speed,
             speedFly = c.speedFly, speedSwim = c.speedSwim, speedClimb = c.speedClimb, saves = c.saves,
             legendaryMax = c.legendaryMax, legendaryResMax = c.legendaryResMax, attacks = c.attacks, saveAsPreset = false,
+            portrait = c.portrait,
         )
     }
 
@@ -563,7 +568,7 @@ class CombatTrackerState {
                     saves = fd.saves, legendaryMax = fd.legendaryMax, legendaryResMax = fd.legendaryResMax,
                     currentHp = min(c.currentHp, fd.maxHp), legendaryCurrent = min(c.legendaryCurrent, fd.legendaryMax),
                     legendaryResCurrent = min(c.legendaryResCurrent, fd.legendaryResMax),
-                    attacks = fd.attacks,
+                    attacks = fd.attacks, portrait = fd.portrait,
                 )
             }
             if (fd.saveAsPreset) presets = presets + buildPresetFrom(nextId("preset"), fd)
@@ -575,7 +580,7 @@ class CombatTrackerState {
                 speedSwim = fd.speedSwim, speedClimb = fd.speedClimb, saves = fd.saves,
                 legendaryMax = fd.legendaryMax, legendaryCurrent = fd.legendaryMax,
                 legendaryResMax = fd.legendaryResMax, legendaryResCurrent = fd.legendaryResMax,
-                attacks = fd.attacks,
+                attacks = fd.attacks, portrait = fd.portrait,
             )
             characters = characters + newChar
             if (activeId == null) activeId = id

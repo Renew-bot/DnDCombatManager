@@ -62,6 +62,8 @@ data class Character(
     val exhaustion: Int = 0,
     val notes: String = "",
     val attacks: List<Attack> = emptyList(),
+    /** Base64-encoded portrait image (PNG/JPEG/etc.), or null if none was set. */
+    val portrait: String? = null,
 )
 
 val CONDITIONS: List<String> = listOf(

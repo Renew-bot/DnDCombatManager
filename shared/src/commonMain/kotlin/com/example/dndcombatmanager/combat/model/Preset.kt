@@ -18,6 +18,7 @@ data class CharacterPreset(
     val legendaryMax: Int = 0,
     val legendaryResMax: Int = 0,
     val attacks: List<Attack> = emptyList(),
+    val portrait: String? = null,
 )
 
 fun CharacterPreset.metaLabel(): String =
@@ -38,4 +39,5 @@ data class CharacterFormData(
     val legendaryResMax: Int = 0,
     val attacks: List<Attack> = emptyList(),
     val saveAsPreset: Boolean = false,
+    val portrait: String? = null,
 )

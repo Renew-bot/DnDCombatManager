@@ -65,6 +65,13 @@ fun CharacterFormDialog(state: CombatTrackerState) {
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                    FieldLabel("Portrait") {
+                        PortraitBox(
+                            portrait = fd.portrait,
+                            onImageBytes = { bytes -> state.formData = fd.copy(portrait = bytes.toPortraitString()) },
+                            onClear = { state.formData = fd.copy(portrait = null) },
+                        )
+                    }
                     FieldLabel("Nom", modifier = Modifier.weight(2f)) {
                         DarkTextField(value = fd.name, onValueChange = { state.formData = fd.copy(name = it) }, placeholder = "Ex. Aeliana")
                     }
