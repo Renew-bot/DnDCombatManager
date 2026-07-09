@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,6 +17,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.outlined.Circle as CircleOutlined
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,23 +34,36 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.dndcombatmanager.combat.model.CONDITIONS
+import com.example.dndcombatmanager.combat.model.CONDITIONS_WITH_DATA_EFFECT
+import com.example.dndcombatmanager.combat.model.CONDITION_DESCRIPTIONS
 import com.example.dndcombatmanager.combat.model.Character
 import com.example.dndcombatmanager.combat.model.CharacterType
 import com.example.dndcombatmanager.combat.model.SaveKey
+import com.example.dndcombatmanager.combat.model.actionsBlockedByCondition
 import com.example.dndcombatmanager.combat.model.formatMod
 import com.example.dndcombatmanager.combat.model.healthPct
 import com.example.dndcombatmanager.combat.model.label
+import com.example.dndcombatmanager.combat.model.saveAutoFails
+import com.example.dndcombatmanager.combat.model.saveHasDisadvantage
+import com.example.dndcombatmanager.combat.model.speedForcedToZero
 import com.example.dndcombatmanager.combat.model.speedText
 import com.example.dndcombatmanager.combat.state.ResourceKey
 import com.example.dndcombatmanager.combat.theme.Fonts
 import com.example.dndcombatmanager.combat.theme.oklch
 import kotlinx.coroutines.delay
+
+// Couleur dédiée aux données de la fiche modifiées par un état (ex. vitesse à 0, jet raté d'office).
+private val conditionEffectColor = oklch(0.78f, 0.17f, 335f)
+private val conditionEffectBg = oklch(0.30f, 0.10f, 335f, 0.4f)
+private val conditionEffectBorder = oklch(0.58f, 0.15f, 335f, 0.8f)
 
 private data class TypeMeta(val color: Color, val bg: Color, val border: Color)
 
@@ -51,6 +73,7 @@ private fun typeMeta(type: CharacterType): TypeMeta = when (type) {
     CharacterType.BOSS -> TypeMeta(oklch(0.78f, 0.14f, 40f), oklch(0.28f, 0.06f, 30f, 0.4f), oklch(0.55f, 0.12f, 30f, 0.7f))
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CharacterSheetCard(
     character: Character,
@@ -89,17 +112,30 @@ fun CharacterSheetCard(
                 )
                 .padding(22.dp),
         ) {
-            // Header row: initiative badge, name/type, action buttons
-            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+            // Header row: initiative badge, name/type, action buttons.
+            // Wraps to a second line (buttons under name/type) instead of squeezing on narrow widths.
+            FlowRow(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .background(oklch(0.19f, 0.02f, 55f), RoundedCornerShape(10.dp))
-                            .border(BorderStroke(1.dp, oklch(0.34f, 0.02f, 55f)), RoundedCornerShape(10.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(character.initiative.toString(), color = oklch(0.80f, 0.14f, 70f), fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .background(oklch(0.19f, 0.02f, 55f), RoundedCornerShape(10.dp))
+                                .border(BorderStroke(1.dp, oklch(0.34f, 0.02f, 55f)), RoundedCornerShape(10.dp)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(character.initiative.toString(), color = oklch(0.80f, 0.14f, 70f), fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
+                        }
+                        Text(
+                            "Init.",
+                            color = oklch(0.62f, 0.02f, 55f),
+                            fontFamily = Fonts.body, fontWeight = FontWeight.Medium, fontSize = 9.sp,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
                     }
                     Column {
                         Text(
@@ -121,16 +157,17 @@ fun CharacterSheetCard(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     PillButton(
-                        text = if (presetSaved) "Enregistré ✓" else "Préset",
+                        text = if (presetSaved) "Enregistré" else "Sauvegarder personnage",
                         onClick = { onSavePreset(character); presetSaved = true },
                         textColor = if (presetSaved) oklch(0.85f, 0.1f, 145f) else oklch(0.75f, 0.02f, 70f),
                         background = if (presetSaved) oklch(0.30f, 0.06f, 145f, 0.4f) else oklch(0.21f, 0.02f, 55f),
                         borderColor = if (presetSaved) oklch(0.55f, 0.11f, 145f, 0.8f) else oklch(0.34f, 0.02f, 55f),
                         fontSize = 11.5.sp,
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        trailingIcon = if (presetSaved) Icons.Default.Check else null,
                     )
-                    IconSquareButton(text = "✎", danger = false, onClick = { onEdit(character.id) })
-                    IconSquareButton(text = "✕", danger = true, onClick = { onDelete(character.id) })
+                    IconSquareButton(icon = Icons.Default.Edit, danger = false, onClick = { onEdit(character.id) })
+                    IconSquareButton(icon = Icons.Default.Close, danger = true, onClick = { onDelete(character.id) })
                 }
             }
 
@@ -204,7 +241,10 @@ fun CharacterSheetCard(
             // Stat chips: AC + speed
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 StatChip(label = "CA", value = character.ac.toString(), modifier = Modifier.weight(1f))
-                StatChip(label = "Vitesse", value = speedText(character), modifier = Modifier.weight(2f), valueFontSize = 14.sp)
+                StatChip(
+                    label = "Vitesse", value = speedText(character), modifier = Modifier.weight(2f), valueFontSize = 14.sp,
+                    valueColor = if (character.speedForcedToZero()) conditionEffectColor else oklch(0.88f, 0.02f, 80f),
+                )
             }
 
             Spacer(16.dp)
@@ -213,17 +253,30 @@ fun CharacterSheetCard(
             SaveKey.entries.chunked(6).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                     row.forEach { key ->
+                        val autoFail = character.saveAutoFails(key)
+                        val disadvantage = character.saveHasDisadvantage(key)
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .background(oklch(0.19f, 0.02f, 55f), RoundedCornerShape(7.dp))
-                                .border(BorderStroke(1.dp, oklch(0.30f, 0.02f, 55f)), RoundedCornerShape(7.dp))
+                                .background(if (autoFail) conditionEffectBg else oklch(0.19f, 0.02f, 55f), RoundedCornerShape(7.dp))
+                                .border(BorderStroke(1.dp, if (autoFail) conditionEffectBorder else oklch(0.30f, 0.02f, 55f)), RoundedCornerShape(7.dp))
                                 .padding(vertical = 6.dp, horizontal = 4.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(key.label, color = oklch(0.55f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 10.sp)
-                                Text(formatMod(character.saves.get(key)), color = oklch(0.88f, 0.02f, 80f), fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                if (autoFail) {
+                                    Text("ÉCHEC", color = conditionEffectColor, fontFamily = Fonts.mono, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                } else {
+                                    Text(
+                                        formatMod(character.saves.get(key)),
+                                        color = if (disadvantage) conditionEffectColor else oklch(0.88f, 0.02f, 80f),
+                                        fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
+                                    )
+                                    if (disadvantage) {
+                                        Text("désav.", color = conditionEffectColor, fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 9.sp)
+                                    }
+                                }
                             }
                         }
                     }
@@ -233,10 +286,11 @@ fun CharacterSheetCard(
             Spacer(16.dp)
 
             SectionLabel("Ressources du tour")
+            val actionsBlocked = character.actionsBlockedByCondition()
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ResourcePill("Action", character.action) { onToggleResource(character.id, ResourceKey.ACTION) }
-                ResourcePill("Bonus", character.bonus) { onToggleResource(character.id, ResourceKey.BONUS) }
-                ResourcePill("Réaction", character.reaction) { onToggleResource(character.id, ResourceKey.REACTION) }
+                ResourcePill("Action", character.action, blocked = actionsBlocked) { onToggleResource(character.id, ResourceKey.ACTION) }
+                ResourcePill("Bonus", character.bonus, blocked = actionsBlocked) { onToggleResource(character.id, ResourceKey.BONUS) }
+                ResourcePill("Réaction", character.reaction, blocked = actionsBlocked) { onToggleResource(character.id, ResourceKey.REACTION) }
             }
 
             if (character.legendaryMax > 0) {
@@ -276,6 +330,7 @@ fun CharacterSheetCard(
             Spacer(16.dp)
 
             SectionLabel("États")
+            var infoCondition by remember { mutableStateOf<String?>(null) }
             Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                 CONDITIONS.chunked(2).forEach { pair ->
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -284,23 +339,47 @@ fun CharacterSheetCard(
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.weight(1f).clickable { onToggleCondition(character.id, name) },
+                                modifier = Modifier.weight(1f),
                             ) {
                                 Box(
                                     modifier = Modifier
                                         .size(18.dp)
                                         .background(if (checked) oklch(0.55f, 0.12f, 70f) else oklch(0.19f, 0.02f, 55f), RoundedCornerShape(5.dp))
-                                        .border(BorderStroke(1.dp, if (checked) oklch(0.70f, 0.13f, 70f) else oklch(0.34f, 0.02f, 55f)), RoundedCornerShape(5.dp)),
+                                        .border(BorderStroke(1.dp, if (checked) oklch(0.70f, 0.13f, 70f) else oklch(0.34f, 0.02f, 55f)), RoundedCornerShape(5.dp))
+                                        .clickable { onToggleCondition(character.id, name) },
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    if (checked) Text("✓", color = oklch(0.15f, 0.02f, 60f), fontSize = 12.sp)
+                                    if (checked) Icon(Icons.Default.Check, contentDescription = null, tint = oklch(0.15f, 0.02f, 60f), modifier = Modifier.size(13.dp))
                                 }
-                                Text(name, color = if (checked) oklch(0.88f, 0.05f, 70f) else oklch(0.65f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 13.sp)
+                                val hasDataEffect = checked && name in CONDITIONS_WITH_DATA_EFFECT
+                                Text(
+                                    name,
+                                    color = if (checked) oklch(0.88f, 0.05f, 70f) else oklch(0.65f, 0.02f, 70f),
+                                    fontFamily = Fonts.body, fontSize = 13.sp,
+                                    fontWeight = if (hasDataEffect) FontWeight.Bold else FontWeight.Normal,
+                                    modifier = Modifier.clickable { onToggleCondition(character.id, name) },
+                                )
+                                if (checked) {
+                                    Text(
+                                        "...",
+                                        color = oklch(0.70f, 0.13f, 200f),
+                                        fontFamily = Fonts.body, fontSize = 13.sp,
+                                        textDecoration = TextDecoration.Underline,
+                                        modifier = Modifier.clickable { infoCondition = name },
+                                    )
+                                }
                             }
                         }
                         if (pair.size == 1) Box(modifier = Modifier.weight(1f))
                     }
                 }
+            }
+            infoCondition?.let { name ->
+                ConditionInfoDialog(
+                    name = name,
+                    description = CONDITION_DESCRIPTIONS[name].orEmpty(),
+                    onDismiss = { infoCondition = null },
+                )
             }
 
             Spacer(16.dp)
@@ -351,7 +430,11 @@ fun CharacterSheetCard(
 }
 
 @Composable
-private fun StatChip(label: String, value: String, modifier: Modifier = Modifier, valueFontSize: androidx.compose.ui.unit.TextUnit = 16.sp) {
+private fun StatChip(
+    label: String, value: String, modifier: Modifier = Modifier,
+    valueFontSize: androidx.compose.ui.unit.TextUnit = 16.sp,
+    valueColor: Color = oklch(0.88f, 0.02f, 80f),
+) {
     Box(
         modifier = modifier
             .background(oklch(0.19f, 0.02f, 55f), RoundedCornerShape(9.dp))
@@ -361,27 +444,28 @@ private fun StatChip(label: String, value: String, modifier: Modifier = Modifier
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(label.uppercase(), color = oklch(0.88f, 0.02f, 80f, 0.6f), fontFamily = Fonts.body, fontSize = 10.sp, letterSpacing = 0.5.sp)
-            Text(value, color = oklch(0.88f, 0.02f, 80f), fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = valueFontSize, textAlign = TextAlign.Center)
+            Text(value, color = valueColor, fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = valueFontSize, textAlign = TextAlign.Center)
         }
     }
 }
 
 @Composable
-private fun ResourcePill(label: String, available: Boolean, onClick: () -> Unit) {
+private fun ResourcePill(label: String, available: Boolean, blocked: Boolean = false, onClick: () -> Unit) {
     PillButton(
-        text = "${if (available) "●" else "○"} $label",
+        text = label,
         onClick = onClick,
-        textColor = if (available) oklch(0.90f, 0.1f, 75f) else oklch(0.55f, 0.02f, 70f),
-        background = if (available) oklch(0.38f, 0.1f, 70f, 0.5f) else oklch(0.21f, 0.02f, 55f),
-        borderColor = if (available) oklch(0.65f, 0.13f, 70f, 0.9f) else oklch(0.32f, 0.02f, 55f),
+        textColor = if (blocked) conditionEffectColor else if (available) oklch(0.90f, 0.1f, 75f) else oklch(0.55f, 0.02f, 70f),
+        background = if (blocked) conditionEffectBg else if (available) oklch(0.38f, 0.1f, 70f, 0.5f) else oklch(0.21f, 0.02f, 55f),
+        borderColor = if (blocked) conditionEffectBorder else if (available) oklch(0.65f, 0.13f, 70f, 0.9f) else oklch(0.32f, 0.02f, 55f),
         fontSize = 13.sp,
         shape = RoundedCornerShape(999.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 7.dp),
+        leadingIcon = if (available) Icons.Default.Circle else Icons.Outlined.CircleOutlined,
     )
 }
 
 @Composable
-private fun IconSquareButton(text: String, danger: Boolean, onClick: () -> Unit) {
+private fun IconSquareButton(icon: ImageVector, danger: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(30.dp)
@@ -390,7 +474,7 @@ private fun IconSquareButton(text: String, danger: Boolean, onClick: () -> Unit)
             .clickable { onClick() },
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = if (danger) oklch(0.65f, 0.14f, 25f) else oklch(0.75f, 0.02f, 70f), fontSize = 13.sp)
+        Icon(icon, contentDescription = null, tint = if (danger) oklch(0.65f, 0.14f, 25f) else oklch(0.75f, 0.02f, 70f), modifier = Modifier.size(15.dp))
     }
 }
 

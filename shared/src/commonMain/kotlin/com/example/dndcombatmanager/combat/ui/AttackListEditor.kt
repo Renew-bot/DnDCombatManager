@@ -16,6 +16,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -140,7 +145,7 @@ fun AttackListEditor(attacks: List<Attack>, onChange: (List<Attack>) -> Unit, mo
                                 .clickable(enabled = draftSteps.size > 1) { draftSteps = draftSteps.filterIndexed { i, _ -> i != idx } },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("✕", color = oklch(0.65f, 0.14f, 25f), fontSize = 12.sp)
+                            Icon(Icons.Default.Close, contentDescription = null, tint = oklch(0.65f, 0.14f, 25f), modifier = Modifier.size(14.dp))
                         }
                     }
                 }
@@ -213,8 +218,8 @@ private fun AttackSummaryRow(attack: Attack, onEdit: () -> Unit, onDelete: () ->
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                SmallSquareIconButton("✎", danger = false, onClick = onEdit)
-                SmallSquareIconButton("✕", danger = true, onClick = onDelete)
+                SmallSquareIconButton(Icons.Default.Edit, danger = false, onClick = onEdit)
+                SmallSquareIconButton(Icons.Default.Close, danger = true, onClick = onDelete)
             }
         }
         Text(
@@ -225,7 +230,7 @@ private fun AttackSummaryRow(attack: Attack, onEdit: () -> Unit, onDelete: () ->
 }
 
 @Composable
-private fun SmallSquareIconButton(text: String, danger: Boolean, onClick: () -> Unit) {
+private fun SmallSquareIconButton(icon: ImageVector, danger: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(26.dp)
@@ -234,6 +239,6 @@ private fun SmallSquareIconButton(text: String, danger: Boolean, onClick: () -> 
             .clickable { onClick() },
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = if (danger) oklch(0.65f, 0.14f, 25f) else oklch(0.75f, 0.02f, 70f), fontSize = 11.sp)
+        Icon(icon, contentDescription = null, tint = if (danger) oklch(0.65f, 0.14f, 25f) else oklch(0.75f, 0.02f, 70f), modifier = Modifier.size(13.dp))
     }
 }

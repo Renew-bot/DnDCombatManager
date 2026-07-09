@@ -18,6 +18,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -111,7 +114,7 @@ fun CombatPresetsDialog(state: CombatTrackerState) {
                                         .clickable { state.requestDeleteCombatPreset(preset.id) },
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    Text("✕", color = oklch(0.65f, 0.14f, 25f), fontSize = 12.sp)
+                                    Icon(Icons.Default.Close, contentDescription = null, tint = oklch(0.65f, 0.14f, 25f), modifier = Modifier.size(14.dp))
                                 }
                             }
                         }

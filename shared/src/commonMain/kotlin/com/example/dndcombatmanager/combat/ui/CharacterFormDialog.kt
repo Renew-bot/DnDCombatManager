@@ -11,10 +11,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -141,11 +145,12 @@ fun CharacterFormDialog(state: CombatTrackerState) {
                 ) {
                     Box(
                         modifier = Modifier
+                            .size(15.dp)
                             .background(if (fd.saveAsPreset) oklch(0.60f, 0.13f, 70f) else oklch(0.19f, 0.02f, 55f), RoundedCornerShape(4.dp))
-                            .border(BorderStroke(1.dp, oklch(0.34f, 0.02f, 55f)), RoundedCornerShape(4.dp))
-                            .padding(1.dp),
+                            .border(BorderStroke(1.dp, oklch(0.34f, 0.02f, 55f)), RoundedCornerShape(4.dp)),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Text(if (fd.saveAsPreset) "✓" else " ", color = oklch(0.15f, 0.02f, 60f), fontSize = 13.sp)
+                        if (fd.saveAsPreset) Icon(Icons.Default.Check, contentDescription = null, tint = oklch(0.15f, 0.02f, 60f), modifier = Modifier.size(12.dp))
                     }
                     Text("Enregistrer aussi comme préset réutilisable", color = oklch(0.75f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 13.sp)
                 }

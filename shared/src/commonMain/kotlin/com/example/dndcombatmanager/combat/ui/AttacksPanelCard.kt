@@ -16,6 +16,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -37,9 +42,9 @@ import com.example.dndcombatmanager.combat.model.Character
 import com.example.dndcombatmanager.combat.model.StepType
 import com.example.dndcombatmanager.combat.model.attackAvailability
 import com.example.dndcombatmanager.combat.model.stepPlaceholder
+import com.example.dndcombatmanager.combat.state.RollResult
 import com.example.dndcombatmanager.combat.theme.Fonts
 import com.example.dndcombatmanager.combat.theme.oklch
-import kotlin.random.Random
 
 internal data class Meta(val color: Color, val bg: Color, val border: Color, val label: String)
 
@@ -56,74 +61,17 @@ internal fun costMeta(cost: AttackCost): Meta = when (cost) {
     AttackCost.LEGENDARY -> Meta(oklch(0.78f, 0.13f, 25f), oklch(0.30f, 0.09f, 25f, 0.35f), oklch(0.52f, 0.13f, 25f, 0.7f), cost.label)
 }
 
-private data class RollResult(val text: String, val crit: String?)
-
-private fun rollAttackStep(text: String): RollResult {
-    val mod = Regex("""[+-]\s*\d+""").find(text)?.value?.replace(" ", "")?.toIntOrNull() ?: 0
-    val roll = Random.nextInt(1, 21)
-    val total = roll + mod
-    val modStr = if (mod == 0) "" else if (mod > 0) "+$mod" else "$mod"
-    val crit = if (roll == 20) "success" else if (roll == 1) "fail" else null
-    val critTxt = when (crit) {
-        "success" -> " — Critique !"
-        "fail" -> " — Échec critique"
-        else -> ""
-    }
-    val modSuffix = if (modStr.isNotEmpty()) " $modStr" else ""
-    return RollResult("d20$modStr → $roll$modSuffix = $total$critTxt", crit)
-}
-
-/**
- * Rolls a damage formula that may chain several dice groups and flat modifiers,
- * e.g. "2d6+1d8+3" or "1d8+2d6-1 tranchants" (trailing descriptive text is ignored).
- */
-private fun rollDamageStep(text: String): RollResult? {
-    val formulaRegex = Regex("""^\s*((?:[+-]?\s*\d+\s*(?:d\s*\d+)?\s*)+)""", RegexOption.IGNORE_CASE)
-    val formula = formulaRegex.find(text)?.groupValues?.get(1)?.trim() ?: return null
-    if (formula.isEmpty()) return null
-
-    val termRegex = Regex("""([+-]?)\s*(\d+)(?:\s*d\s*(\d+))?""", RegexOption.IGNORE_CASE)
-    val terms = termRegex.findAll(formula).toList()
-    if (terms.isEmpty()) return null
-
-    var total = 0
-    var hasDice = false
-    val displayParts = mutableListOf<String>()
-    terms.forEachIndexed { idx, m ->
-        val sign = if (m.groupValues[1] == "-") -1 else 1
-        val numberStr = m.groupValues[2]
-        val sidesStr = m.groupValues[3]
-        val operator = when {
-            idx == 0 && sign < 0 -> "-"
-            idx == 0 -> ""
-            sign < 0 -> " - "
-            else -> " + "
-        }
-        if (sidesStr.isNotEmpty()) {
-            val sides = sidesStr.toIntOrNull() ?: return@forEachIndexed
-            val count = (numberStr.toIntOrNull() ?: 1).coerceAtLeast(1)
-            hasDice = true
-            val dice = List(count) { Random.nextInt(1, sides + 1) }
-            total += sign * dice.sum()
-            displayParts += "$operator[${dice.joinToString(", ")}]"
-        } else {
-            val value = numberStr.toIntOrNull() ?: 0
-            total += sign * value
-            displayParts += "$operator$value"
-        }
-    }
-    if (!hasDice) return null
-    return RollResult("$formula → ${displayParts.joinToString("")} = $total", null)
-}
-
 internal data class DraftStep(val type: StepType = StepType.ATTACK, val text: String = "")
 
 @Composable
 fun AttacksPanelCard(
     character: Character,
+    rolls: Map<String, Map<String, RollResult>>,
+    targetingActive: Boolean,
+    isOwnTurn: Boolean,
     onSave: (String, Attack) -> Unit,
     onDelete: (String, String) -> Unit,
-    onUse: (String, AttackCost) -> Unit,
+    onUse: (String, Attack) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var building by remember(character.id) { mutableStateOf(false) }
@@ -131,7 +79,6 @@ fun AttacksPanelCard(
     var draftName by remember(character.id) { mutableStateOf("") }
     var draftCost by remember(character.id) { mutableStateOf(AttackCost.ACTION) }
     var draftSteps by remember(character.id) { mutableStateOf(listOf(DraftStep())) }
-    var rolls by remember(character.id) { mutableStateOf(mapOf<String, Map<String, RollResult>>()) }
     var stepIdCounter by remember(character.id) { mutableStateOf(0) }
 
     fun startAdd() {
@@ -148,18 +95,6 @@ fun AttacksPanelCard(
         draftName = attack.name
         draftCost = attack.cost
         draftSteps = attack.steps.map { DraftStep(it.type, it.text) }
-    }
-
-    fun rollForAttack(attack: Attack) {
-        val results = mutableMapOf<String, RollResult>()
-        attack.steps.forEach { step ->
-            when (step.type) {
-                StepType.ATTACK -> results[step.id] = rollAttackStep(step.text)
-                StepType.DAMAGE -> rollDamageStep(step.text)?.let { results[step.id] = it }
-                StepType.OTHER -> {}
-            }
-        }
-        rolls = rolls + (attack.id to results)
     }
 
     Column(
@@ -201,11 +136,11 @@ fun AttacksPanelCard(
                     character.attacks.forEach { attack ->
                         AttackCard(
                             attack = attack,
-                            available = character.attackAvailability(attack.cost),
+                            available = character.attackAvailability(attack.cost, isOwnTurn) && !targetingActive,
                             rolled = rolls[attack.id] ?: emptyMap(),
                             onEdit = { startEdit(attack) },
                             onDelete = { onDelete(character.id, attack.id) },
-                            onUse = { onUse(character.id, attack.cost); rollForAttack(attack) },
+                            onUse = { onUse(character.id, attack) },
                         )
                     }
                 }
@@ -247,7 +182,7 @@ fun AttacksPanelCard(
                                 .clickable(enabled = draftSteps.size > 1) { draftSteps = draftSteps.filterIndexed { i, _ -> i != idx } },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("✕", color = oklch(0.65f, 0.14f, 25f), fontSize = 12.sp)
+                            Icon(Icons.Default.Close, contentDescription = null, tint = oklch(0.65f, 0.14f, 25f), modifier = Modifier.size(14.dp))
                         }
                     }
                 }
@@ -311,8 +246,8 @@ private fun AttackCard(
         Row(horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text(attack.name, color = oklch(0.90f, 0.02f, 80f), fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 14.5.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                SmallIconButton("✎", danger = false, onClick = onEdit)
-                SmallIconButton("✕", danger = true, onClick = onDelete)
+                SmallIconButton(Icons.Default.Edit, danger = false, onClick = onEdit)
+                SmallIconButton(Icons.Default.Close, danger = true, onClick = onDelete)
             }
         }
         Box(modifier = Modifier.height(8.dp))
@@ -372,7 +307,7 @@ private fun AttackCard(
 }
 
 @Composable
-private fun SmallIconButton(text: String, danger: Boolean, onClick: () -> Unit) {
+private fun SmallIconButton(icon: ImageVector, danger: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(26.dp)
@@ -381,6 +316,6 @@ private fun SmallIconButton(text: String, danger: Boolean, onClick: () -> Unit) 
             .clickable { onClick() },
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = if (danger) oklch(0.65f, 0.14f, 25f) else oklch(0.75f, 0.02f, 70f), fontSize = 11.sp)
+        Icon(icon, contentDescription = null, tint = if (danger) oklch(0.65f, 0.14f, 25f) else oklch(0.75f, 0.02f, 70f), modifier = Modifier.size(13.dp))
     }
 }

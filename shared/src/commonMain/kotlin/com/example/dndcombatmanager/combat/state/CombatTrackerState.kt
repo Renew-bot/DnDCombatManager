@@ -5,14 +5,87 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.example.dndcombatmanager.combat.model.Attack
 import com.example.dndcombatmanager.combat.model.AttackCost
+import com.example.dndcombatmanager.combat.model.AttackStep
 import com.example.dndcombatmanager.combat.model.Character
 import com.example.dndcombatmanager.combat.model.CharacterFormData
 import com.example.dndcombatmanager.combat.model.CharacterPreset
 import com.example.dndcombatmanager.combat.model.CombatPreset
+import com.example.dndcombatmanager.combat.model.StepType
 import com.example.dndcombatmanager.combat.storage.PresetStorage
 import com.example.dndcombatmanager.combat.storage.SavedPresets
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.random.Random
+
+/** Result of a single rolled attack/damage step, with the numeric total used for AC comparisons. */
+data class RollResult(val text: String, val crit: String?, val total: Int?)
+
+/** An attack that's waiting for a target — nothing is rolled until one is picked. */
+data class PendingAttack(
+    val attackerId: String,
+    val attackId: String,
+    val attackName: String,
+    val attackSteps: List<AttackStep>,
+    val damageSteps: List<AttackStep>,
+)
+
+private fun rollAttackStep(text: String): RollResult {
+    val mod = Regex("""[+-]\s*\d+""").find(text)?.value?.replace(" ", "")?.toIntOrNull() ?: 0
+    val roll = Random.nextInt(1, 21)
+    val total = roll + mod
+    val modStr = if (mod == 0) "" else if (mod > 0) "+$mod" else "$mod"
+    val crit = if (roll == 20) "success" else if (roll == 1) "fail" else null
+    val critTxt = when (crit) {
+        "success" -> " — Critique !"
+        "fail" -> " — Échec critique"
+        else -> ""
+    }
+    val modSuffix = if (modStr.isNotEmpty()) " $modStr" else ""
+    return RollResult("d20$modStr → $roll$modSuffix = $total$critTxt", crit, total)
+}
+
+/**
+ * Rolls a damage formula that may chain several dice groups and flat modifiers,
+ * e.g. "2d6+1d8+3" or "1d8+2d6-1 tranchants" (trailing descriptive text is ignored).
+ */
+private fun rollDamageStep(text: String): RollResult? {
+    val formulaRegex = Regex("""^\s*((?:[+-]?\s*\d+\s*(?:d\s*\d+)?\s*)+)""", RegexOption.IGNORE_CASE)
+    val formula = formulaRegex.find(text)?.groupValues?.get(1)?.trim() ?: return null
+    if (formula.isEmpty()) return null
+
+    val termRegex = Regex("""([+-]?)\s*(\d+)(?:\s*d\s*(\d+))?""", RegexOption.IGNORE_CASE)
+    val terms = termRegex.findAll(formula).toList()
+    if (terms.isEmpty()) return null
+
+    var total = 0
+    var hasDice = false
+    val displayParts = mutableListOf<String>()
+    terms.forEachIndexed { idx, m ->
+        val sign = if (m.groupValues[1] == "-") -1 else 1
+        val numberStr = m.groupValues[2]
+        val sidesStr = m.groupValues[3]
+        val operator = when {
+            idx == 0 && sign < 0 -> "-"
+            idx == 0 -> ""
+            sign < 0 -> " - "
+            else -> " + "
+        }
+        if (sidesStr.isNotEmpty()) {
+            val sides = sidesStr.toIntOrNull() ?: return@forEachIndexed
+            val count = (numberStr.toIntOrNull() ?: 1).coerceAtLeast(1)
+            hasDice = true
+            val dice = List(count) { Random.nextInt(1, sides + 1) }
+            total += sign * dice.sum()
+            displayParts += "$operator[${dice.joinToString(", ")}]"
+        } else {
+            val value = numberStr.toIntOrNull() ?: 0
+            total += sign * value
+            displayParts += "$operator$value"
+        }
+    }
+    if (!hasDice) return null
+    return RollResult("$formula → ${displayParts.joinToString("")} = $total", null, total)
+}
 
 /** Holds the whole combat encounter and every mutation the UI can trigger. */
 class CombatTrackerState {
@@ -26,6 +99,11 @@ class CombatTrackerState {
         private set
     var layout by mutableStateOf(Layout.SIDEBAR)
     var modalCharId by mutableStateOf<String?>(null)
+        private set
+
+    var attackRolls by mutableStateOf<Map<String, Map<String, Map<String, RollResult>>>>(emptyMap())
+        private set
+    var pendingAttack by mutableStateOf<PendingAttack?>(null)
         private set
 
     var showForm by mutableStateOf(false)
@@ -141,6 +219,7 @@ class CombatTrackerState {
         round = newRound
         activeId = nextChar.id
         viewingId = null
+        pendingAttack = null
     }
 
     fun handleDamage(id: String, amount: Int) = updateChar(id) { c ->
@@ -204,6 +283,73 @@ class CombatTrackerState {
         }
     }
 
+    fun rollsFor(charId: String): Map<String, Map<String, RollResult>> = attackRolls[charId] ?: emptyMap()
+
+    private fun storeRolls(charId: String, attackId: String, results: Map<String, RollResult>) {
+        val charRolls = attackRolls[charId] ?: emptyMap()
+        val existing = charRolls[attackId] ?: emptyMap()
+        attackRolls = attackRolls + (charId to (charRolls + (attackId to (existing + results))))
+    }
+
+    /** Consumes the attacker's action economy and opens targeting — nothing is rolled until a target is picked. */
+    fun beginAttack(charId: String, attack: Attack) {
+        if (pendingAttack != null) return
+        handleUseAttack(charId, attack.cost)
+        pendingAttack = PendingAttack(
+            attackerId = charId, attackId = attack.id, attackName = attack.name,
+            attackSteps = attack.steps.filter { it.type == StepType.ATTACK },
+            damageSteps = attack.steps.filter { it.type == StepType.DAMAGE },
+        )
+    }
+
+    /** Rolls the pending attack against the chosen target's AC (roll >= AC hits) and applies damage on a hit. */
+    fun resolveAttackTarget(targetId: String) {
+        val pending = pendingAttack ?: return
+        val target = characters.find { it.id == targetId } ?: return
+        val results = mutableMapOf<String, RollResult>()
+        var bestTotal: Int? = null
+        pending.attackSteps.forEach { step ->
+            val r = rollAttackStep(step.text)
+            val suffix = r.total?.let { t -> if (t >= target.ac) " — Touché (CA ${target.ac})" else " — Raté (CA ${target.ac})" } ?: ""
+            results[step.id] = r.copy(text = r.text + suffix)
+            r.total?.let { t -> bestTotal = if (bestTotal == null) t else max(bestTotal!!, t) }
+        }
+        val hits = bestTotal == null || bestTotal!! >= target.ac
+        if (hits) {
+            var totalDamage = 0
+            pending.damageSteps.forEach { step ->
+                rollDamageStep(step.text)?.let { r -> results[step.id] = r; totalDamage += r.total ?: 0 }
+            }
+            if (totalDamage > 0) handleDamage(targetId, totalDamage)
+        }
+        storeRolls(pending.attackerId, pending.attackId, results)
+        pendingAttack = null
+    }
+
+    fun cancelAttack() {
+        pendingAttack = null
+    }
+
+    /** Sidebar/timeline card click: resolves the pending attack against the clicked target, or just switches the view. */
+    fun handleCharacterClick(id: String) {
+        val pending = pendingAttack
+        if (pending != null) {
+            if (id == pending.attackerId) cancelAttack() else resolveAttackTarget(id)
+            return
+        }
+        selectViewing(id)
+    }
+
+    /** Focus tile click: same targeting short-circuit as [handleCharacterClick], otherwise opens the modal. */
+    fun handleFocusTileClick(id: String) {
+        val pending = pendingAttack
+        if (pending != null && id != pending.attackerId) {
+            resolveAttackTarget(id)
+            return
+        }
+        openModal(id)
+    }
+
     fun requestDelete(id: String) {
         pendingDeleteId = id
     }
@@ -222,6 +368,7 @@ class CombatTrackerState {
         }
         if (viewingId == id) viewingId = null
         if (modalCharId == id) modalCharId = null
+        if (pendingAttack?.attackerId == id) pendingAttack = null
         pendingDeleteId = null
     }
 
@@ -239,6 +386,8 @@ class CombatTrackerState {
         activeId = null
         viewingId = null
         modalCharId = null
+        pendingAttack = null
+        attackRolls = emptyMap()
         pendingClearAll = false
     }
 
@@ -357,6 +506,8 @@ class CombatTrackerState {
         activeId = newCharacters.sortedByDescending { it.initiative }.firstOrNull()?.id
         viewingId = null
         modalCharId = null
+        pendingAttack = null
+        attackRolls = emptyMap()
         showCombatPresets = false
     }
 

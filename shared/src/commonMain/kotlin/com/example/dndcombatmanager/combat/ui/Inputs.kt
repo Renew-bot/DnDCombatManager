@@ -12,10 +12,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -170,7 +175,7 @@ fun <T> DarkSelectField(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(currentLabel, color = InputText, fontFamily = Fonts.body, fontSize = 14.sp)
-            Text("▾", color = LabelColor, fontFamily = Fonts.body, fontSize = 11.sp)
+            Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = LabelColor, modifier = Modifier.size(16.dp))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { opt ->
@@ -196,6 +201,8 @@ fun PillButton(
     contentPadding: PaddingValues = PaddingValues(horizontal = 15.dp, vertical = 9.dp),
     enabled: Boolean = true,
     shape: RoundedCornerShape = RoundedCornerShape(9.dp),
+    leadingIcon: ImageVector? = null,
+    trailingIcon: ImageVector? = null,
 ) {
     Box(
         modifier = modifier
@@ -205,7 +212,15 @@ fun PillButton(
             .padding(contentPadding),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = textColor, fontFamily = Fonts.body, fontWeight = fontWeight, fontSize = fontSize, textAlign = TextAlign.Center)
+        if (leadingIcon == null && trailingIcon == null) {
+            Text(text, color = textColor, fontFamily = Fonts.body, fontWeight = fontWeight, fontSize = fontSize, textAlign = TextAlign.Center)
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                leadingIcon?.let { Icon(it, contentDescription = null, tint = textColor, modifier = Modifier.size(14.dp)) }
+                Text(text, color = textColor, fontFamily = Fonts.body, fontWeight = fontWeight, fontSize = fontSize, textAlign = TextAlign.Center)
+                trailingIcon?.let { Icon(it, contentDescription = null, tint = textColor, modifier = Modifier.size(14.dp)) }
+            }
+        }
     }
 }
 
@@ -218,7 +233,9 @@ fun GradientPillButton(
     fontSize: androidx.compose.ui.unit.TextUnit = 13.5.sp,
     contentPadding: PaddingValues = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
     shape: RoundedCornerShape = RoundedCornerShape(9.dp),
+    trailingIcon: ImageVector? = null,
 ) {
+    val textColor = oklch(0.16f, 0.02f, 60f)
     Box(
         modifier = modifier
             .background(
@@ -229,6 +246,13 @@ fun GradientPillButton(
             .padding(contentPadding),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = oklch(0.16f, 0.02f, 60f), fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = fontSize, textAlign = TextAlign.Center)
+        if (trailingIcon == null) {
+            Text(text, color = textColor, fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = fontSize, textAlign = TextAlign.Center)
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(text, color = textColor, fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = fontSize, textAlign = TextAlign.Center)
+                Icon(trailingIcon, contentDescription = null, tint = textColor, modifier = Modifier.size(14.dp))
+            }
+        }
     }
 }

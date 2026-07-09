@@ -25,9 +25,16 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -155,7 +162,7 @@ private fun Header(state: CombatTrackerState, maxHeight: Dp, isCompact: Boolean)
                 BurgerMenuButton(state = state, showJump = showJump)
             }
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 0.dp).padding(bottom = 12.dp)) {
-                GradientPillButton(text = "Tour suivant →", onClick = { state.nextTurn() }, fontSize = 13.5.sp, modifier = Modifier.fillMaxWidth())
+                GradientPillButton(text = "Tour suivant", onClick = { state.nextTurn() }, fontSize = 13.5.sp, modifier = Modifier.fillMaxWidth(), trailingIcon = Icons.AutoMirrored.Filled.ArrowForward)
             }
         } else {
             Row(
@@ -189,10 +196,11 @@ private fun Header(state: CombatTrackerState, maxHeight: Dp, isCompact: Boolean)
                     }
                     if (showJump) {
                         PillButton(
-                            text = "↺ Voir le tour actif", onClick = { state.jumpToActive() },
+                            text = "Voir le tour actif", onClick = { state.jumpToActive() },
                             textColor = oklch(0.80f, 0.1f, 70f), background = androidx.compose.ui.graphics.Color.Transparent,
                             borderColor = oklch(0.50f, 0.09f, 70f, 0.7f), fontSize = 12.sp, shape = RoundedCornerShape(999.dp),
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 11.dp, vertical = 4.dp),
+                            leadingIcon = Icons.Default.Refresh,
                         )
                     }
                 }
@@ -242,7 +250,7 @@ private fun Header(state: CombatTrackerState, maxHeight: Dp, isCompact: Boolean)
                         textColor = oklch(0.85f, 0.02f, 80f), background = oklch(0.24f, 0.02f, 55f),
                         borderColor = oklch(0.36f, 0.02f, 55f), fontSize = 13.sp,
                     )
-                    GradientPillButton(text = "Tour suivant →", onClick = { state.nextTurn() }, fontSize = 13.5.sp)
+                    GradientPillButton(text = "Tour suivant", onClick = { state.nextTurn() }, fontSize = 13.5.sp, trailingIcon = Icons.AutoMirrored.Filled.ArrowForward)
                     PillButton(
                         text = "Vider", onClick = { state.requestClearAll() },
                         textColor = oklch(0.55f, 0.1f, 25f), background = androidx.compose.ui.graphics.Color.Transparent,
@@ -267,20 +275,27 @@ private fun BurgerMenuButton(state: CombatTrackerState, showJump: Boolean) {
                 .clickable { expanded = true },
             contentAlignment = Alignment.Center,
         ) {
-            Text("☰", color = oklch(0.85f, 0.02f, 80f), fontSize = 16.sp)
+            Icon(Icons.Default.Menu, contentDescription = null, tint = oklch(0.85f, 0.02f, 80f), modifier = Modifier.size(18.dp))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             state.activeCharacter?.let { active ->
                 DropdownMenuItem(text = { Text("Actif : ${active.name}", fontWeight = FontWeight.SemiBold) }, onClick = {}, enabled = false)
             }
             if (showJump) {
-                DropdownMenuItem(text = { Text("↺ Voir le tour actif") }, onClick = { state.jumpToActive(); expanded = false })
+                DropdownMenuItem(
+                    text = { Text("Voir le tour actif") },
+                    leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
+                    onClick = { state.jumpToActive(); expanded = false },
+                )
             }
             HorizontalDivider()
             Layout.entries.forEach { l ->
                 val active = state.layout == l
                 DropdownMenuItem(
-                    text = { Text(if (active) "✓ ${l.label}" else l.label) },
+                    text = { Text(l.label) },
+                    leadingIcon = if (active) {
+                        { Icon(Icons.Default.Check, contentDescription = null) }
+                    } else null,
                     onClick = { state.changeLayout(l); expanded = false },
                 )
             }
@@ -358,7 +373,7 @@ private fun FocusModal(
                         .clickable { state.closeModal() },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("✕", color = oklch(0.85f, 0.02f, 80f), fontSize = 14.sp)
+                    Icon(Icons.Default.Close, contentDescription = null, tint = oklch(0.85f, 0.02f, 80f), modifier = Modifier.size(16.dp))
                 }
             }
         }

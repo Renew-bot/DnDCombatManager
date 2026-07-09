@@ -38,9 +38,10 @@ fun stepPlaceholder(type: StepType): String = when (type) {
     StepType.OTHER -> "Ex. DD 18 Force ou agrippé"
 }
 
-fun Character.attackAvailability(cost: AttackCost): Boolean = when (cost) {
+/** [isOwnTurn] gates legendary actions, which D&D rules only let a creature spend on someone else's turn. */
+fun Character.attackAvailability(cost: AttackCost, isOwnTurn: Boolean): Boolean = when (cost) {
     AttackCost.ACTION -> action
     AttackCost.BONUS -> bonus
     AttackCost.REACTION -> reaction
-    AttackCost.LEGENDARY -> legendaryCurrent > 0
+    AttackCost.LEGENDARY -> legendaryCurrent > 0 && !isOwnTurn
 }
