@@ -30,6 +30,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.dndcombatmanager.combat.model.CharacterType
 import com.example.dndcombatmanager.combat.model.SaveKey
+import com.example.dndcombatmanager.combat.model.abilityModifier
+import com.example.dndcombatmanager.combat.model.formatMod
 import com.example.dndcombatmanager.combat.state.CombatTrackerState
 import com.example.dndcombatmanager.combat.theme.Fonts
 import com.example.dndcombatmanager.combat.theme.oklch
@@ -116,13 +118,26 @@ fun CharacterFormDialog(state: CombatTrackerState) {
                     }
                 }
 
-                SectionLabel("Modificateurs de sauvegarde", modifier = Modifier.padding(top = 4.dp))
+                SectionLabel("Stats", modifier = Modifier.padding(top = 4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
                     SaveKey.entries.forEach { key ->
                         FieldLabel(key.label, modifier = Modifier.weight(1f)) {
                             DarkNumberField(
-                                value = fd.saves.get(key),
-                                onValueChange = { state.formData = fd.copy(saves = fd.saves.with(key, it)) },
+                                value = fd.stats.get(key),
+                                onValueChange = { state.formData = fd.copy(stats = fd.stats.with(key, it)) },
+                            )
+                        }
+                    }
+                }
+
+                SectionLabel("Jets de sauvegarde (vide = calculé depuis les stats)", modifier = Modifier.padding(top = 4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+                    SaveKey.entries.forEach { key ->
+                        FieldLabel(key.label, modifier = Modifier.weight(1f)) {
+                            DarkNullableNumberField(
+                                value = fd.saveOverrides.get(key),
+                                onValueChange = { state.formData = fd.copy(saveOverrides = fd.saveOverrides.with(key, it)) },
+                                placeholder = formatMod(abilityModifier(fd.stats.get(key))),
                             )
                         }
                     }

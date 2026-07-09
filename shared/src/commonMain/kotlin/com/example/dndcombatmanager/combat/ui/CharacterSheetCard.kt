@@ -22,6 +22,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Circle as CircleOutlined
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -78,6 +80,7 @@ private fun typeMeta(type: CharacterType): TypeMeta = when (type) {
 fun CharacterSheetCard(
     character: Character,
     isActive: Boolean,
+    others: List<Character>,
     onDamage: (String, Int) -> Unit,
     onHeal: (String, Int) -> Unit,
     onTempHp: (String, Int) -> Unit,
@@ -91,11 +94,17 @@ fun CharacterSheetCard(
     onDelete: (String) -> Unit,
     onSavePreset: (Character) -> Unit,
     onPortraitChange: (String, String?) -> Unit,
+    onSetCharmedBy: (String, String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val meta = typeMeta(character.type)
     var amount by remember(character.id) { mutableStateOf("") }
     var presetSaved by remember(character.id) { mutableStateOf(false) }
+    var statsExpanded by remember(character.id) { mutableStateOf(true) }
+    var resourcesExpanded by remember(character.id) { mutableStateOf(true) }
+    var conditionsExpanded by remember(character.id) { mutableStateOf(true) }
+    var exhaustionExpanded by remember(character.id) { mutableStateOf(true) }
+    var notesExpanded by remember(character.id) { mutableStateOf(true) }
 
     LaunchedEffectPresetSaved(presetSaved) { presetSaved = false }
 
@@ -255,32 +264,42 @@ fun CharacterSheetCard(
 
             Spacer(16.dp)
 
-            SectionLabel("Jets de sauvegarde")
-            SaveKey.entries.chunked(6).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                    row.forEach { key ->
-                        val autoFail = character.saveAutoFails(key)
-                        val disadvantage = character.saveHasDisadvantage(key)
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .background(if (autoFail) conditionEffectBg else oklch(0.19f, 0.02f, 55f), RoundedCornerShape(7.dp))
-                                .border(BorderStroke(1.dp, if (autoFail) conditionEffectBorder else oklch(0.30f, 0.02f, 55f)), RoundedCornerShape(7.dp))
-                                .padding(vertical = 6.dp, horizontal = 4.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(key.label, color = oklch(0.55f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 10.sp)
-                                if (autoFail) {
-                                    Text("ÉCHEC", color = conditionEffectColor, fontFamily = Fonts.mono, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                } else {
-                                    Text(
-                                        formatMod(character.saves.get(key)),
-                                        color = if (disadvantage) conditionEffectColor else oklch(0.88f, 0.02f, 80f),
-                                        fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
-                                    )
-                                    if (disadvantage) {
-                                        Text("désav.", color = conditionEffectColor, fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 9.sp)
+            CollapsibleHeader("Stats", statsExpanded) { statsExpanded = !statsExpanded }
+            if (statsExpanded) {
+                SaveKey.entries.chunked(6).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                        row.forEach { key ->
+                            val autoFail = character.saveAutoFails(key)
+                            val disadvantage = character.saveHasDisadvantage(key)
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .background(if (autoFail) conditionEffectBg else oklch(0.19f, 0.02f, 55f), RoundedCornerShape(7.dp))
+                                    .border(BorderStroke(1.dp, if (autoFail) conditionEffectBorder else oklch(0.30f, 0.02f, 55f)), RoundedCornerShape(7.dp))
+                                    .padding(vertical = 6.dp, horizontal = 4.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(key.label, color = oklch(0.55f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 10.sp)
+                                    if (autoFail) {
+                                        Text("ÉCHEC", color = conditionEffectColor, fontFamily = Fonts.mono, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    } else {
+                                        Row(verticalAlignment = Alignment.Bottom) {
+                                            Text(
+                                                character.stats.get(key).toString(),
+                                                color = oklch(0.88f, 0.02f, 80f),
+                                                fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
+                                            )
+                                            Text(
+                                                "(${formatMod(character.saves.get(key))})",
+                                                color = if (disadvantage) conditionEffectColor else oklch(0.60f, 0.02f, 70f),
+                                                fontFamily = Fonts.mono, fontWeight = FontWeight.Medium, fontSize = 10.5.sp,
+                                                modifier = Modifier.padding(start = 2.dp),
+                                            )
+                                        }
+                                        if (disadvantage) {
+                                            Text("désav.", color = conditionEffectColor, fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 9.sp)
+                                        }
                                     }
                                 }
                             }
@@ -291,12 +310,14 @@ fun CharacterSheetCard(
 
             Spacer(16.dp)
 
-            SectionLabel("Ressources du tour")
-            val actionsBlocked = character.actionsBlockedByCondition()
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ResourcePill("Action", character.action, blocked = actionsBlocked) { onToggleResource(character.id, ResourceKey.ACTION) }
-                ResourcePill("Bonus", character.bonus, blocked = actionsBlocked) { onToggleResource(character.id, ResourceKey.BONUS) }
-                ResourcePill("Réaction", character.reaction, blocked = actionsBlocked) { onToggleResource(character.id, ResourceKey.REACTION) }
+            CollapsibleHeader("Ressources du tour", resourcesExpanded) { resourcesExpanded = !resourcesExpanded }
+            if (resourcesExpanded) {
+                val actionsBlocked = character.actionsBlockedByCondition()
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ResourcePill("Action", character.action, blocked = actionsBlocked) { onToggleResource(character.id, ResourceKey.ACTION) }
+                    ResourcePill("Bonus", character.bonus, blocked = actionsBlocked) { onToggleResource(character.id, ResourceKey.BONUS) }
+                    ResourcePill("Réaction", character.reaction, blocked = actionsBlocked) { onToggleResource(character.id, ResourceKey.REACTION) }
+                }
             }
 
             if (character.legendaryMax > 0) {
@@ -335,48 +356,65 @@ fun CharacterSheetCard(
 
             Spacer(16.dp)
 
-            SectionLabel("États")
+            CollapsibleHeader("États", conditionsExpanded) { conditionsExpanded = !conditionsExpanded }
             var infoCondition by remember { mutableStateOf<String?>(null) }
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                CONDITIONS.chunked(2).forEach { pair ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                        pair.forEach { name ->
-                            val checked = character.conditions.contains(name)
+            if (conditionsExpanded) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                    CONDITIONS.chunked(2).forEach { pair ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                            pair.forEach { name ->
+                                val checked = character.conditions.contains(name)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .background(if (checked) oklch(0.55f, 0.12f, 70f) else oklch(0.19f, 0.02f, 55f), RoundedCornerShape(5.dp))
+                                            .border(BorderStroke(1.dp, if (checked) oklch(0.70f, 0.13f, 70f) else oklch(0.34f, 0.02f, 55f)), RoundedCornerShape(5.dp))
+                                            .clickable { onToggleCondition(character.id, name) },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        if (checked) Icon(Icons.Default.Check, contentDescription = null, tint = oklch(0.15f, 0.02f, 60f), modifier = Modifier.size(13.dp))
+                                    }
+                                    val hasDataEffect = checked && name in CONDITIONS_WITH_DATA_EFFECT
+                                    Text(
+                                        name,
+                                        color = if (checked) oklch(0.88f, 0.05f, 70f) else oklch(0.65f, 0.02f, 70f),
+                                        fontFamily = Fonts.body, fontSize = 13.sp,
+                                        fontWeight = if (hasDataEffect) FontWeight.Bold else FontWeight.Normal,
+                                        modifier = Modifier.clickable { onToggleCondition(character.id, name) },
+                                    )
+                                    if (checked) {
+                                        Text(
+                                            "+",
+                                            color = oklch(0.70f, 0.13f, 200f),
+                                            fontFamily = Fonts.body, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                                            textDecoration = TextDecoration.Underline,
+                                            modifier = Modifier.clickable { infoCondition = name },
+                                        )
+                                    }
+                                }
+                            }
+                            if (pair.size == 1) Box(modifier = Modifier.weight(1f))
+                        }
+                        if ("Charmé" in pair && character.conditions.contains("Charmé")) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.fillMaxWidth().padding(start = 26.dp),
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(18.dp)
-                                        .background(if (checked) oklch(0.55f, 0.12f, 70f) else oklch(0.19f, 0.02f, 55f), RoundedCornerShape(5.dp))
-                                        .border(BorderStroke(1.dp, if (checked) oklch(0.70f, 0.13f, 70f) else oklch(0.34f, 0.02f, 55f)), RoundedCornerShape(5.dp))
-                                        .clickable { onToggleCondition(character.id, name) },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    if (checked) Icon(Icons.Default.Check, contentDescription = null, tint = oklch(0.15f, 0.02f, 60f), modifier = Modifier.size(13.dp))
-                                }
-                                val hasDataEffect = checked && name in CONDITIONS_WITH_DATA_EFFECT
-                                Text(
-                                    name,
-                                    color = if (checked) oklch(0.88f, 0.05f, 70f) else oklch(0.65f, 0.02f, 70f),
-                                    fontFamily = Fonts.body, fontSize = 13.sp,
-                                    fontWeight = if (hasDataEffect) FontWeight.Bold else FontWeight.Normal,
-                                    modifier = Modifier.clickable { onToggleCondition(character.id, name) },
+                                Text("Charmé par", color = oklch(0.60f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 11.5.sp)
+                                DarkSelectField(
+                                    selected = character.charmedBy,
+                                    options = listOf(SelectOption<String?>(null, "?")) + others.map { SelectOption<String?>(it.id, it.name) },
+                                    onSelect = { onSetCharmedBy(character.id, it) },
+                                    modifier = Modifier.weight(1f),
                                 )
-                                if (checked) {
-                                    Text(
-                                        "+",
-                                        color = oklch(0.70f, 0.13f, 200f),
-                                        fontFamily = Fonts.body, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                                        textDecoration = TextDecoration.Underline,
-                                        modifier = Modifier.clickable { infoCondition = name },
-                                    )
-                                }
                             }
                         }
-                        if (pair.size == 1) Box(modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -390,35 +428,39 @@ fun CharacterSheetCard(
 
             Spacer(16.dp)
 
-            SectionLabel("Niveau d'épuisement")
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                for (level in 0..6) {
-                    val filled = level > 0 && level <= character.exhaustion
-                    val isCurrent = character.exhaustion == level
-                    val (bg, border, textColor) = when {
-                        filled -> Triple(oklch(0.50f, 0.15f, 30f), oklch(0.65f, 0.16f, 30f), oklch(0.93f, 0.03f, 60f))
-                        isCurrent -> Triple(oklch(0.30f, 0.05f, 145f), oklch(0.60f, 0.12f, 145f), oklch(0.85f, 0.1f, 145f))
-                        else -> Triple(oklch(0.21f, 0.02f, 55f), oklch(0.34f, 0.02f, 55f), oklch(0.55f, 0.02f, 70f))
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(30.dp)
-                            .background(bg, RoundedCornerShape(8.dp))
-                            .border(BorderStroke(1.dp, border), RoundedCornerShape(8.dp))
-                            .clickable { onSetExhaustion(character.id, level) },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(level.toString(), color = textColor, fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+            CollapsibleHeader("Niveau d'épuisement", exhaustionExpanded) { exhaustionExpanded = !exhaustionExpanded }
+            if (exhaustionExpanded) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    for (level in 0..6) {
+                        val filled = level > 0 && level <= character.exhaustion
+                        val isCurrent = character.exhaustion == level
+                        val (bg, border, textColor) = when {
+                            filled -> Triple(oklch(0.50f, 0.15f, 30f), oklch(0.65f, 0.16f, 30f), oklch(0.93f, 0.03f, 60f))
+                            isCurrent -> Triple(oklch(0.30f, 0.05f, 145f), oklch(0.60f, 0.12f, 145f), oklch(0.85f, 0.1f, 145f))
+                            else -> Triple(oklch(0.21f, 0.02f, 55f), oklch(0.34f, 0.02f, 55f), oklch(0.55f, 0.02f, 70f))
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .background(bg, RoundedCornerShape(8.dp))
+                                .border(BorderStroke(1.dp, border), RoundedCornerShape(8.dp))
+                                .clickable { onSetExhaustion(character.id, level) },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(level.toString(), color = textColor, fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                        }
                     }
                 }
             }
 
             Spacer(12.dp)
-            SectionLabel("Notes / Concentration")
-            DarkTextArea(
-                value = character.notes, onValueChange = { onNotes(character.id, it) },
-                placeholder = "Sort concentré, tactique, remarque…",
-            )
+            CollapsibleHeader("Notes / Concentration", notesExpanded) { notesExpanded = !notesExpanded }
+            if (notesExpanded) {
+                DarkTextArea(
+                    value = character.notes, onValueChange = { onNotes(character.id, it) },
+                    placeholder = "Sort concentré, tactique, remarque…",
+                )
+            }
         }
 
         if (isActive) {
@@ -487,6 +529,22 @@ private fun IconSquareButton(icon: ImageVector, danger: Boolean, onClick: () -> 
 @Composable
 private fun Spacer(height: androidx.compose.ui.unit.Dp) {
     Box(modifier = Modifier.height(height))
+}
+
+/** A [SectionLabel] with a chevron that toggles the section's content below it. */
+@Composable
+private fun CollapsibleHeader(title: String, expanded: Boolean, onToggle: () -> Unit) {
+    Row(
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().clickable { onToggle() },
+    ) {
+        SectionLabel(title)
+        Icon(
+            if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+            contentDescription = null, tint = oklch(0.55f, 0.02f, 70f), modifier = Modifier.size(16.dp),
+        )
+    }
 }
 
 @Composable

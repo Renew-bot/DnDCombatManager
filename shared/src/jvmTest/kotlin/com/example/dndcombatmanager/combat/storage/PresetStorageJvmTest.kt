@@ -1,5 +1,6 @@
 package com.example.dndcombatmanager.combat.storage
 
+import com.example.dndcombatmanager.combat.model.Character
 import com.example.dndcombatmanager.combat.model.CharacterPreset
 import com.example.dndcombatmanager.combat.model.CharacterType
 import com.example.dndcombatmanager.combat.state.CombatTrackerState
@@ -27,7 +28,10 @@ class PresetStorageJvmTest {
     @Test
     fun presetsPersistAcrossRestartsAndRawStorageRoundTrips() = withIsolatedHome {
         val first = CombatTrackerState()
-        val monster = first.characters.first()
+        val monster = Character(
+            id = "test-c1", name = "Gobelin de test", type = CharacterType.MONSTRE,
+            initiative = 12, maxHp = 7, currentHp = 7, ac = 13, speed = 9,
+        )
         first.handleSavePreset(monster)
         check(first.presets.isNotEmpty())
 

@@ -95,6 +95,7 @@ fun CombatTrackerScreen() {
     PresetsDialog(state)
     CombatPresetsDialog(state)
     SaveCombatDialog(state)
+    ProneDistanceDialog(state)
 
     state.pendingDeleteId?.let {
         ConfirmDialog(

@@ -36,9 +36,13 @@ import com.example.dndcombatmanager.combat.state.PendingAttack
 import com.example.dndcombatmanager.combat.theme.Fonts
 import com.example.dndcombatmanager.combat.theme.oklch
 
-/** True while an attack is waiting for a target and this character is a valid one to pick. */
-private fun isTargetable(pending: PendingAttack?, character: Character): Boolean =
-    pending != null && character.id != pending.attackerId
+/** True while an attack is waiting for a target and this character is a valid one to pick (not the attacker, not their charmer). */
+private fun isTargetable(pending: PendingAttack?, character: Character, protectedCharmerId: String?): Boolean =
+    pending != null && character.id != pending.attackerId && character.id != protectedCharmerId
+
+/** True while an attack is pending and this character charmed the attacker — they can't be targeted. */
+private fun isProtectedCharmer(character: Character, protectedCharmerId: String?): Boolean =
+    protectedCharmerId != null && character.id == protectedCharmerId
 
 @Composable
 private fun TargetingBanner(pending: PendingAttack, onCancel: () -> Unit, modifier: Modifier = Modifier) {
@@ -52,7 +56,7 @@ private fun TargetingBanner(pending: PendingAttack, onCancel: () -> Unit, modifi
             .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
         Text(
-            "Choisissez une cible pour « ${pending.attackName} »",
+            "Choisissez une cible pour « ${pending.attackName} », ou recliquez sur l'attaque pour lancer sans cible",
             color = oklch(0.85f, 0.1f, 25f), fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp,
             modifier = Modifier.weight(1f),
         )
@@ -73,42 +77,47 @@ fun CharacterAndAttacksPane(
     stacked: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val others = state.characters.filter { it.id != character.id }
+    val pendingAttackId = state.pendingAttack?.takeIf { it.attackerId == character.id }?.attackId
+
     if (stacked) {
         Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(20.dp)) {
             CharacterSheetCard(
-                character = character, isActive = isActive,
+                character = character, isActive = isActive, others = others,
                 onDamage = state::handleDamage, onHeal = state::handleHeal, onTempHp = state::handleTempHp,
                 onToggleCondition = state::handleToggleCondition, onToggleResource = state::handleToggleResource,
                 onLegendaryUse = state::handleLegendaryUse, onLegendaryResUse = state::handleLegendaryResUse,
                 onSetExhaustion = state::handleSetExhaustion, onNotes = state::handleNotes,
                 onEdit = state::openEditForm, onDelete = state::requestDelete, onSavePreset = state::handleSavePreset,
-                onPortraitChange = state::handleSetPortrait,
+                onPortraitChange = state::handleSetPortrait, onSetCharmedBy = state::handleSetCharmedBy,
                 modifier = Modifier.fillMaxWidth(),
             )
             AttacksPanelCard(
                 character = character, rolls = state.rollsFor(character.id), targetingActive = state.pendingAttack != null,
-                isOwnTurn = isActive,
+                pendingAttackId = pendingAttackId, isOwnTurn = isActive,
                 onSave = state::handleSaveAttack, onDelete = state::handleDeleteAttack,
-                onUse = state::beginAttack, modifier = Modifier.fillMaxWidth(),
+                onUse = state::beginAttack, onRollWithoutTarget = state::resolveAttackWithoutTarget,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     } else {
         Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             CharacterSheetCard(
-                character = character, isActive = isActive,
+                character = character, isActive = isActive, others = others,
                 onDamage = state::handleDamage, onHeal = state::handleHeal, onTempHp = state::handleTempHp,
                 onToggleCondition = state::handleToggleCondition, onToggleResource = state::handleToggleResource,
                 onLegendaryUse = state::handleLegendaryUse, onLegendaryResUse = state::handleLegendaryResUse,
                 onSetExhaustion = state::handleSetExhaustion, onNotes = state::handleNotes,
                 onEdit = state::openEditForm, onDelete = state::requestDelete, onSavePreset = state::handleSavePreset,
-                onPortraitChange = state::handleSetPortrait,
+                onPortraitChange = state::handleSetPortrait, onSetCharmedBy = state::handleSetCharmedBy,
                 modifier = Modifier.weight(1.7f),
             )
             AttacksPanelCard(
                 character = character, rolls = state.rollsFor(character.id), targetingActive = state.pendingAttack != null,
-                isOwnTurn = isActive,
+                pendingAttackId = pendingAttackId, isOwnTurn = isActive,
                 onSave = state::handleSaveAttack, onDelete = state::handleDeleteAttack,
-                onUse = state::beginAttack, modifier = Modifier.weight(1f),
+                onUse = state::beginAttack, onRollWithoutTarget = state::resolveAttackWithoutTarget,
+                modifier = Modifier.weight(1f),
             )
         }
     }
@@ -120,6 +129,7 @@ fun SidebarLayout(state: CombatTrackerState, isNarrow: Boolean, stackAttacks: Bo
     val viewingId = state.effectiveViewingId
     val viewingChar = state.viewingCharacter
     val pending = state.pendingAttack
+    val protectedCharmerId = pending?.let { p -> state.characters.find { it.id == p.attackerId }?.charmedBy }
 
     val list = @Composable { listModifier: Modifier ->
         Column(modifier = listModifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -128,7 +138,8 @@ fun SidebarLayout(state: CombatTrackerState, isNarrow: Boolean, stackAttacks: Bo
                     character = c,
                     isActive = c.id == state.activeId,
                     isViewing = c.id == viewingId,
-                    targetable = isTargetable(pending, c),
+                    targetable = isTargetable(pending, c, protectedCharmerId),
+                    protected = isProtectedCharmer(c, protectedCharmerId),
                     onClick = { state.handleCharacterClick(c.id) },
                 )
             }
@@ -153,7 +164,7 @@ fun SidebarLayout(state: CombatTrackerState, isNarrow: Boolean, stackAttacks: Bo
 }
 
 @Composable
-private fun SidebarRow(character: Character, isActive: Boolean, isViewing: Boolean, targetable: Boolean, onClick: () -> Unit) {
+private fun SidebarRow(character: Character, isActive: Boolean, isViewing: Boolean, targetable: Boolean, protected: Boolean, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -161,6 +172,7 @@ private fun SidebarRow(character: Character, isActive: Boolean, isViewing: Boole
             .fillMaxWidth()
             .background(
                 when {
+                    protected -> oklch(0.30f, 0.10f, 335f, 0.35f)
                     isViewing -> oklch(0.27f, 0.03f, 55f)
                     targetable -> oklch(0.30f, 0.09f, 25f, 0.35f)
                     else -> Color.Transparent
@@ -171,6 +183,7 @@ private fun SidebarRow(character: Character, isActive: Boolean, isViewing: Boole
                 BorderStroke(
                     1.dp,
                     when {
+                        protected -> oklch(0.65f, 0.16f, 335f, 0.9f)
                         targetable -> oklch(0.62f, 0.16f, 25f, 0.9f)
                         isActive -> oklch(0.60f, 0.12f, 70f, 0.8f)
                         else -> Color.Transparent
@@ -225,6 +238,7 @@ fun TimelineLayout(state: CombatTrackerState, isNarrow: Boolean, stackAttacks: B
     val viewingId = state.effectiveViewingId
     val viewingChar = state.viewingCharacter
     val pending = state.pendingAttack
+    val protectedCharmerId = pending?.let { p -> state.characters.find { it.id == p.attackerId }?.charmedBy }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(20.dp)) {
         pending?.let { TargetingBanner(it, onCancel = state::cancelAttack) }
@@ -235,7 +249,8 @@ fun TimelineLayout(state: CombatTrackerState, isNarrow: Boolean, stackAttacks: B
             sorted.forEach { c ->
                 TimelineCard(
                     character = c, isActive = c.id == state.activeId, isViewing = c.id == viewingId,
-                    targetable = isTargetable(pending, c),
+                    targetable = isTargetable(pending, c, protectedCharmerId),
+                    protected = isProtectedCharmer(c, protectedCharmerId),
                     onClick = { state.handleCharacterClick(c.id) },
                 )
             }
@@ -245,7 +260,7 @@ fun TimelineLayout(state: CombatTrackerState, isNarrow: Boolean, stackAttacks: B
 }
 
 @Composable
-private fun TimelineCard(character: Character, isActive: Boolean, isViewing: Boolean, targetable: Boolean, onClick: () -> Unit) {
+private fun TimelineCard(character: Character, isActive: Boolean, isViewing: Boolean, targetable: Boolean, protected: Boolean, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -253,6 +268,7 @@ private fun TimelineCard(character: Character, isActive: Boolean, isViewing: Boo
             .wrapContentWidth()
             .background(
                 when {
+                    protected -> oklch(0.30f, 0.10f, 335f, 0.35f)
                     isViewing -> oklch(0.27f, 0.03f, 55f)
                     targetable -> oklch(0.30f, 0.09f, 25f, 0.35f)
                     else -> oklch(0.20f, 0.02f, 55f)
@@ -263,6 +279,7 @@ private fun TimelineCard(character: Character, isActive: Boolean, isViewing: Boo
                 BorderStroke(
                     1.dp,
                     when {
+                        protected -> oklch(0.65f, 0.16f, 335f, 0.9f)
                         targetable -> oklch(0.62f, 0.16f, 25f, 0.9f)
                         isActive -> oklch(0.60f, 0.12f, 70f, 0.8f)
                         else -> oklch(0.30f, 0.02f, 55f)
@@ -295,6 +312,7 @@ fun FocusLayout(state: CombatTrackerState, isNarrow: Boolean, stackAttacks: Bool
     val activeChar = state.activeCharacter
     val others = state.sortedCharacters.filter { it.id != state.activeId }
     val pending = state.pendingAttack
+    val protectedCharmerId = pending?.let { p -> state.characters.find { it.id == p.attackerId }?.charmedBy }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(24.dp)) {
         pending?.let { TargetingBanner(it, onCancel = state::cancelAttack) }
@@ -309,7 +327,8 @@ fun FocusLayout(state: CombatTrackerState, isNarrow: Boolean, stackAttacks: Bool
             FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 others.forEach { c ->
                     FocusTile(
-                        character = c, isActive = c.id == state.activeId, targetable = isTargetable(pending, c),
+                        character = c, isActive = c.id == state.activeId, targetable = isTargetable(pending, c, protectedCharmerId),
+                        protected = isProtectedCharmer(c, protectedCharmerId),
                         onClick = { state.handleFocusTileClick(c.id) },
                     )
                 }
@@ -319,16 +338,24 @@ fun FocusLayout(state: CombatTrackerState, isNarrow: Boolean, stackAttacks: Bool
 }
 
 @Composable
-private fun FocusTile(character: Character, isActive: Boolean, targetable: Boolean, onClick: () -> Unit) {
+private fun FocusTile(character: Character, isActive: Boolean, targetable: Boolean, protected: Boolean, onClick: () -> Unit) {
     Column(
         verticalArrangement = Arrangement.spacedBy(5.dp),
         modifier = Modifier
             .width(128.dp)
-            .background(if (targetable) oklch(0.30f, 0.09f, 25f, 0.35f) else oklch(0.20f, 0.02f, 55f), RoundedCornerShape(10.dp))
+            .background(
+                when {
+                    protected -> oklch(0.30f, 0.10f, 335f, 0.35f)
+                    targetable -> oklch(0.30f, 0.09f, 25f, 0.35f)
+                    else -> oklch(0.20f, 0.02f, 55f)
+                },
+                RoundedCornerShape(10.dp),
+            )
             .border(
                 BorderStroke(
                     1.dp,
                     when {
+                        protected -> oklch(0.65f, 0.16f, 335f, 0.9f)
                         targetable -> oklch(0.62f, 0.16f, 25f, 0.9f)
                         isActive -> oklch(0.60f, 0.12f, 70f, 0.8f)
                         else -> oklch(0.30f, 0.02f, 55f)

@@ -11,6 +11,12 @@ import com.example.dndcombatmanager.combat.model.CharacterFormData
 import com.example.dndcombatmanager.combat.model.CharacterPreset
 import com.example.dndcombatmanager.combat.model.CombatPreset
 import com.example.dndcombatmanager.combat.model.StepType
+import com.example.dndcombatmanager.combat.model.attacksAgainstHaveAdvantage
+import com.example.dndcombatmanager.combat.model.attacksAgainstHaveDisadvantage
+import com.example.dndcombatmanager.combat.model.ownAttacksHaveAdvantage
+import com.example.dndcombatmanager.combat.model.ownAttacksHaveDisadvantage
+import com.example.dndcombatmanager.combat.model.resolveSaves
+import com.example.dndcombatmanager.combat.model.toOverrides
 import com.example.dndcombatmanager.combat.storage.PresetStorage
 import com.example.dndcombatmanager.combat.storage.SavedPresets
 import kotlin.math.max
@@ -29,9 +35,22 @@ data class PendingAttack(
     val damageSteps: List<AttackStep>,
 )
 
-private fun rollAttackStep(text: String): RollResult {
+/** D&D advantage/disadvantage: roll 2d20 and keep the better/worse of the two. */
+enum class RollMode { NORMAL, ADVANTAGE, DISADVANTAGE }
+
+private fun rollAttackStep(text: String, mode: RollMode = RollMode.NORMAL): RollResult {
     val mod = Regex("""[+-]\s*\d+""").find(text)?.value?.replace(" ", "")?.toIntOrNull() ?: 0
-    val roll = Random.nextInt(1, 21)
+    val (roll, rollLabel) = when (mode) {
+        RollMode.NORMAL -> Random.nextInt(1, 21) to "d20"
+        RollMode.ADVANTAGE -> {
+            val a = Random.nextInt(1, 21); val b = Random.nextInt(1, 21)
+            max(a, b) to "d20(avantage $a/$b)"
+        }
+        RollMode.DISADVANTAGE -> {
+            val a = Random.nextInt(1, 21); val b = Random.nextInt(1, 21)
+            min(a, b) to "d20(désavantage $a/$b)"
+        }
+    }
     val total = roll + mod
     val modStr = if (mod == 0) "" else if (mod > 0) "+$mod" else "$mod"
     val crit = if (roll == 20) "success" else if (roll == 1) "fail" else null
@@ -41,7 +60,7 @@ private fun rollAttackStep(text: String): RollResult {
         else -> ""
     }
     val modSuffix = if (modStr.isNotEmpty()) " $modStr" else ""
-    return RollResult("d20$modStr → $roll$modSuffix = $total$critTxt", crit, total)
+    return RollResult("$rollLabel$modStr → $roll$modSuffix = $total$critTxt", crit, total)
 }
 
 /**
@@ -89,11 +108,11 @@ private fun rollDamageStep(text: String): RollResult? {
 
 /** Holds the whole combat encounter and every mutation the UI can trigger. */
 class CombatTrackerState {
-    var characters by mutableStateOf(seedCharacters())
+    var characters by mutableStateOf(emptyList<Character>())
         private set
     var round by mutableStateOf(1)
         private set
-    var activeId by mutableStateOf(characters.firstOrNull { it.id == "c4" }?.id ?: characters.firstOrNull()?.id)
+    var activeId by mutableStateOf(characters.firstOrNull()?.id)
         private set
     var viewingId by mutableStateOf<String?>(null)
         private set
@@ -104,6 +123,9 @@ class CombatTrackerState {
     var attackRolls by mutableStateOf<Map<String, Map<String, Map<String, RollResult>>>>(emptyMap())
         private set
     var pendingAttack by mutableStateOf<PendingAttack?>(null)
+        private set
+    /** Target picked while [pendingAttack] is active, but they're prone so we need the attacker's range first. */
+    var pendingProneTargetId by mutableStateOf<String?>(null)
         private set
 
     var showForm by mutableStateOf(false)
@@ -220,6 +242,7 @@ class CombatTrackerState {
         activeId = nextChar.id
         viewingId = null
         pendingAttack = null
+        pendingProneTargetId = null
     }
 
     fun handleDamage(id: String, amount: Int) = updateChar(id) { c ->
@@ -239,8 +262,13 @@ class CombatTrackerState {
 
     fun handleToggleCondition(id: String, name: String) = updateChar(id) { c ->
         val has = c.conditions.contains(name)
-        c.copy(conditions = if (has) c.conditions.filter { it != name } else c.conditions + name)
+        c.copy(
+            conditions = if (has) c.conditions.filter { it != name } else c.conditions + name,
+            charmedBy = if (name == "Charmé" && has) null else c.charmedBy,
+        )
     }
+
+    fun handleSetCharmedBy(id: String, charmerId: String?) = updateChar(id) { c -> c.copy(charmedBy = charmerId) }
 
     fun handleToggleResource(id: String, key: ResourceKey) = updateChar(id) { c ->
         when (key) {
@@ -304,14 +332,60 @@ class CombatTrackerState {
         )
     }
 
+    /**
+     * Advantage/disadvantage from the attacker's own conditions and, if there's a target, theirs — they cancel out
+     * if both apply. A prone target's effect on attacks against it depends on range, so [proneRangeMeters] (only
+     * asked for when the target is prone) supplies that: <= 1.5m is melee reach (advantage), further is disadvantage.
+     */
+    private fun rollModeFor(attackerId: String, targetId: String?, proneRangeMeters: Double? = null): RollMode {
+        val attacker = characters.find { it.id == attackerId }
+        val target = targetId?.let { id -> characters.find { it.id == id } }
+        var advantage = (attacker?.ownAttacksHaveAdvantage() == true) || (target?.attacksAgainstHaveAdvantage() == true)
+        var disadvantage = (attacker?.ownAttacksHaveDisadvantage() == true) || (target?.attacksAgainstHaveDisadvantage() == true)
+        if (target != null && target.conditions.contains("À terre") && proneRangeMeters != null) {
+            if (proneRangeMeters <= 1.5) advantage = true else disadvantage = true
+        }
+        return when {
+            advantage && disadvantage -> RollMode.NORMAL
+            advantage -> RollMode.ADVANTAGE
+            disadvantage -> RollMode.DISADVANTAGE
+            else -> RollMode.NORMAL
+        }
+    }
+
+    /** Sidebar/timeline/focus target click: if the target is prone, asks for range first via [pendingProneTargetId]. */
+    private fun beginResolveAttack(targetId: String) {
+        val pending = pendingAttack ?: return
+        val attacker = characters.find { it.id == pending.attackerId }
+        if (attacker?.charmedBy == targetId) return // a charmed character can't target their charmer
+        val target = characters.find { it.id == targetId } ?: return
+        if (target.conditions.contains("À terre")) {
+            pendingProneTargetId = targetId
+        } else {
+            resolveAttackTarget(targetId)
+        }
+    }
+
+    /** Resolves the prone-range prompt and rolls the attack against the chosen target. */
+    fun confirmProneDistance(meters: Double) {
+        val targetId = pendingProneTargetId ?: return
+        pendingProneTargetId = null
+        resolveAttackTarget(targetId, proneRangeMeters = meters)
+    }
+
+    fun cancelProneDistance() {
+        pendingProneTargetId = null
+    }
+
     /** Rolls the pending attack against the chosen target's AC (roll >= AC hits) and applies damage on a hit. */
-    fun resolveAttackTarget(targetId: String) {
+    fun resolveAttackTarget(targetId: String, proneRangeMeters: Double? = null) {
         val pending = pendingAttack ?: return
         val target = characters.find { it.id == targetId } ?: return
+        val mode = rollModeFor(pending.attackerId, targetId, proneRangeMeters)
         val results = mutableMapOf<String, RollResult>()
         var bestTotal: Int? = null
         pending.attackSteps.forEach { step ->
-            val r = rollAttackStep(step.text)
+            val r = rollAttackStep(step.text, mode)
             val suffix = r.total?.let { t -> if (t >= target.ac) " — Touché (CA ${target.ac})" else " — Raté (CA ${target.ac})" } ?: ""
             results[step.id] = r.copy(text = r.text + suffix)
             r.total?.let { t -> bestTotal = if (bestTotal == null) t else max(bestTotal!!, t) }
@@ -328,15 +402,27 @@ class CombatTrackerState {
         pendingAttack = null
     }
 
+    /** Rolls the pending attack's steps with no target picked — no AC check, no damage applied. */
+    fun resolveAttackWithoutTarget() {
+        val pending = pendingAttack ?: return
+        val mode = rollModeFor(pending.attackerId, null)
+        val results = mutableMapOf<String, RollResult>()
+        pending.attackSteps.forEach { step -> results[step.id] = rollAttackStep(step.text, mode) }
+        pending.damageSteps.forEach { step -> rollDamageStep(step.text)?.let { results[step.id] = it } }
+        storeRolls(pending.attackerId, pending.attackId, results)
+        pendingAttack = null
+    }
+
     fun cancelAttack() {
         pendingAttack = null
+        pendingProneTargetId = null
     }
 
     /** Sidebar/timeline card click: resolves the pending attack against the clicked target, or just switches the view. */
     fun handleCharacterClick(id: String) {
         val pending = pendingAttack
         if (pending != null) {
-            if (id == pending.attackerId) cancelAttack() else resolveAttackTarget(id)
+            if (id == pending.attackerId) cancelAttack() else beginResolveAttack(id)
             return
         }
         selectViewing(id)
@@ -346,7 +432,7 @@ class CombatTrackerState {
     fun handleFocusTileClick(id: String) {
         val pending = pendingAttack
         if (pending != null && id != pending.attackerId) {
-            resolveAttackTarget(id)
+            beginResolveAttack(id)
             return
         }
         openModal(id)
@@ -362,7 +448,7 @@ class CombatTrackerState {
 
     fun confirmDelete() {
         val id = pendingDeleteId ?: return
-        val remaining = characters.filter { it.id != id }
+        val remaining = characters.filter { it.id != id }.map { if (it.charmedBy == id) it.copy(charmedBy = null) else it }
         characters = remaining
         if (activeId == id) {
             val sorted = remaining.sortedByDescending { it.initiative }
@@ -371,6 +457,7 @@ class CombatTrackerState {
         if (viewingId == id) viewingId = null
         if (modalCharId == id) modalCharId = null
         if (pendingAttack?.attackerId == id) pendingAttack = null
+        if (pendingProneTargetId == id) pendingProneTargetId = null
         pendingDeleteId = null
     }
 
@@ -389,6 +476,7 @@ class CombatTrackerState {
         viewingId = null
         modalCharId = null
         pendingAttack = null
+        pendingProneTargetId = null
         attackRolls = emptyMap()
         pendingClearAll = false
     }
@@ -396,14 +484,15 @@ class CombatTrackerState {
     private fun buildPresetFrom(id: String, c: Character): CharacterPreset = CharacterPreset(
         id = id, name = c.name, type = c.type, initiative = c.initiative, maxHp = c.maxHp, ac = c.ac,
         speed = c.speed, speedFly = c.speedFly, speedSwim = c.speedSwim, speedClimb = c.speedClimb,
-        saves = c.saves, legendaryMax = c.legendaryMax, legendaryResMax = c.legendaryResMax,
+        stats = c.stats, saves = c.saves, legendaryMax = c.legendaryMax, legendaryResMax = c.legendaryResMax,
         attacks = c.attacks, portrait = c.portrait,
     )
 
     private fun buildPresetFrom(id: String, fd: CharacterFormData): CharacterPreset = CharacterPreset(
         id = id, name = fd.name, type = fd.type, initiative = fd.initiative, maxHp = fd.maxHp, ac = fd.ac,
         speed = fd.speed, speedFly = fd.speedFly, speedSwim = fd.speedSwim, speedClimb = fd.speedClimb,
-        saves = fd.saves, legendaryMax = fd.legendaryMax, legendaryResMax = fd.legendaryResMax,
+        stats = fd.stats, saves = resolveSaves(fd.stats, fd.saveOverrides),
+        legendaryMax = fd.legendaryMax, legendaryResMax = fd.legendaryResMax,
         attacks = fd.attacks, portrait = fd.portrait,
     )
 
@@ -439,7 +528,7 @@ class CombatTrackerState {
             id = id, name = preset.name, type = preset.type, initiative = preset.initiative,
             maxHp = preset.maxHp, currentHp = preset.maxHp, tempHp = 0, ac = preset.ac, speed = preset.speed,
             speedFly = preset.speedFly, speedSwim = preset.speedSwim, speedClimb = preset.speedClimb,
-            saves = preset.saves, legendaryMax = preset.legendaryMax, legendaryCurrent = preset.legendaryMax,
+            stats = preset.stats, saves = preset.saves, legendaryMax = preset.legendaryMax, legendaryCurrent = preset.legendaryMax,
             legendaryResMax = preset.legendaryResMax, legendaryResCurrent = preset.legendaryResMax,
             attacks = preset.attacks.mapIndexed { i, a -> a.copy(id = nextId("atk${i}_")) },
             portrait = preset.portrait,
@@ -496,7 +585,7 @@ class CombatTrackerState {
             id = nextId("c"), name = cp.name, type = cp.type, initiative = cp.initiative,
             maxHp = cp.maxHp, currentHp = cp.maxHp, tempHp = 0, ac = cp.ac, speed = cp.speed,
             speedFly = cp.speedFly, speedSwim = cp.speedSwim, speedClimb = cp.speedClimb,
-            saves = cp.saves, legendaryMax = cp.legendaryMax, legendaryCurrent = cp.legendaryMax,
+            stats = cp.stats, saves = cp.saves, legendaryMax = cp.legendaryMax, legendaryCurrent = cp.legendaryMax,
             legendaryResMax = cp.legendaryResMax, legendaryResCurrent = cp.legendaryResMax,
             attacks = cp.attacks.mapIndexed { i, a -> a.copy(id = nextId("atk${i}_")) },
             portrait = cp.portrait,
@@ -511,6 +600,7 @@ class CombatTrackerState {
         viewingId = null
         modalCharId = null
         pendingAttack = null
+        pendingProneTargetId = null
         attackRolls = emptyMap()
         showCombatPresets = false
     }
@@ -545,7 +635,8 @@ class CombatTrackerState {
         modalCharId = null
         formData = CharacterFormData(
             name = c.name, type = c.type, initiative = c.initiative, maxHp = c.maxHp, ac = c.ac, speed = c.speed,
-            speedFly = c.speedFly, speedSwim = c.speedSwim, speedClimb = c.speedClimb, saves = c.saves,
+            speedFly = c.speedFly, speedSwim = c.speedSwim, speedClimb = c.speedClimb,
+            stats = c.stats, saveOverrides = c.saves.toOverrides(),
             legendaryMax = c.legendaryMax, legendaryResMax = c.legendaryResMax, attacks = c.attacks, saveAsPreset = false,
             portrait = c.portrait,
         )
@@ -559,13 +650,14 @@ class CombatTrackerState {
         val fd = formData
         if (fd.name.isBlank()) return
         val editing = editingId
+        val resolvedSaves = resolveSaves(fd.stats, fd.saveOverrides)
         if (editing != null) {
             characters = characters.map { c ->
                 if (c.id != editing) return@map c
                 c.copy(
                     name = fd.name, type = fd.type, initiative = fd.initiative, maxHp = fd.maxHp, ac = fd.ac,
                     speed = fd.speed, speedFly = fd.speedFly, speedSwim = fd.speedSwim, speedClimb = fd.speedClimb,
-                    saves = fd.saves, legendaryMax = fd.legendaryMax, legendaryResMax = fd.legendaryResMax,
+                    stats = fd.stats, saves = resolvedSaves, legendaryMax = fd.legendaryMax, legendaryResMax = fd.legendaryResMax,
                     currentHp = min(c.currentHp, fd.maxHp), legendaryCurrent = min(c.legendaryCurrent, fd.legendaryMax),
                     legendaryResCurrent = min(c.legendaryResCurrent, fd.legendaryResMax),
                     attacks = fd.attacks, portrait = fd.portrait,
@@ -577,7 +669,7 @@ class CombatTrackerState {
             val newChar = Character(
                 id = id, name = fd.name, type = fd.type, initiative = fd.initiative, maxHp = fd.maxHp,
                 currentHp = fd.maxHp, tempHp = 0, ac = fd.ac, speed = fd.speed, speedFly = fd.speedFly,
-                speedSwim = fd.speedSwim, speedClimb = fd.speedClimb, saves = fd.saves,
+                speedSwim = fd.speedSwim, speedClimb = fd.speedClimb, stats = fd.stats, saves = resolvedSaves,
                 legendaryMax = fd.legendaryMax, legendaryCurrent = fd.legendaryMax,
                 legendaryResMax = fd.legendaryResMax, legendaryResCurrent = fd.legendaryResMax,
                 attacks = fd.attacks, portrait = fd.portrait,

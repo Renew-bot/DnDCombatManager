@@ -123,6 +123,45 @@ fun DarkNumberField(
     }
 }
 
+/** Like [DarkNumberField] but a blank field means "unset" (null) instead of coercing to 0. */
+@Composable
+fun DarkNullableNumberField(
+    value: Int?,
+    onValueChange: (Int?) -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: String = "",
+    textAlign: TextAlign = TextAlign.Start,
+    background: Color = oklch(0.16f, 0.02f, 55f),
+    textColor: Color = InputText,
+) {
+    var text by remember(value) { mutableStateOf(value?.toString() ?: "") }
+    Box(
+        modifier = modifier
+            .background(background, RoundedCornerShape(7.dp))
+            .border(BorderStroke(1.dp, InputBorder), RoundedCornerShape(7.dp))
+            .padding(horizontal = 8.dp, vertical = 7.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (text.isEmpty() && placeholder.isNotEmpty()) {
+            Text(
+                placeholder, color = textColor.copy(alpha = 0.4f), fontFamily = Fonts.mono, fontSize = 14.sp, textAlign = textAlign,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        BasicTextField(
+            value = text,
+            onValueChange = { newText ->
+                text = newText
+                onValueChange(if (newText.isBlank()) null else newText.toIntOrNull())
+            },
+            singleLine = true,
+            textStyle = TextStyle(color = textColor, fontFamily = Fonts.mono, fontSize = 14.sp, textAlign = textAlign),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(textColor),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
 @Composable
 fun DarkTextArea(
     value: String,

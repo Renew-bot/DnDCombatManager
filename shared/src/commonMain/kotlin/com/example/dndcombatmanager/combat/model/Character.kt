@@ -37,6 +37,52 @@ enum class SaveKey(val label: String) {
     FOR("FOR"), DEX("DEX"), CON("CON"), INT("INT"), SAG("SAG"), CHA("CHA")
 }
 
+/** Ability score of 10 (D&D default) for every key. */
+val DEFAULT_STATS = Saves(force = 10, dex = 10, con = 10, intel = 10, sagesse = 10, charisme = 10)
+
+/** Explicit saving-throw overrides entered in the character form; a null key falls back to the stat-derived value. */
+data class SaveOverrides(
+    val force: Int? = null,
+    val dex: Int? = null,
+    val con: Int? = null,
+    val intel: Int? = null,
+    val sagesse: Int? = null,
+    val charisme: Int? = null,
+) {
+    fun get(key: SaveKey): Int? = when (key) {
+        SaveKey.FOR -> force
+        SaveKey.DEX -> dex
+        SaveKey.CON -> con
+        SaveKey.INT -> intel
+        SaveKey.SAG -> sagesse
+        SaveKey.CHA -> charisme
+    }
+
+    fun with(key: SaveKey, value: Int?): SaveOverrides = when (key) {
+        SaveKey.FOR -> copy(force = value)
+        SaveKey.DEX -> copy(dex = value)
+        SaveKey.CON -> copy(con = value)
+        SaveKey.INT -> copy(intel = value)
+        SaveKey.SAG -> copy(sagesse = value)
+        SaveKey.CHA -> copy(charisme = value)
+    }
+}
+
+fun Saves.toOverrides(): SaveOverrides = SaveOverrides(force, dex, con, intel, sagesse, charisme)
+
+/** D&D 5e ability modifier: floor((score - 10) / 2). */
+fun abilityModifier(score: Int): Int = kotlin.math.floor((score - 10) / 2.0).toInt()
+
+/** Resolves final saving-throw modifiers: an explicit override wins, otherwise it's derived from [stats]. */
+fun resolveSaves(stats: Saves, overrides: SaveOverrides): Saves = Saves(
+    force = overrides.force ?: abilityModifier(stats.force),
+    dex = overrides.dex ?: abilityModifier(stats.dex),
+    con = overrides.con ?: abilityModifier(stats.con),
+    intel = overrides.intel ?: abilityModifier(stats.intel),
+    sagesse = overrides.sagesse ?: abilityModifier(stats.sagesse),
+    charisme = overrides.charisme ?: abilityModifier(stats.charisme),
+)
+
 data class Character(
     val id: String,
     val name: String,
@@ -50,6 +96,7 @@ data class Character(
     val speedFly: Int = 0,
     val speedSwim: Int = 0,
     val speedClimb: Int = 0,
+    val stats: Saves = DEFAULT_STATS,
     val saves: Saves = Saves(),
     val action: Boolean = true,
     val bonus: Boolean = true,
@@ -59,6 +106,8 @@ data class Character(
     val legendaryResMax: Int = 0,
     val legendaryResCurrent: Int = 0,
     val conditions: List<String> = emptyList(),
+    /** id of the combatant who charmed this character, when "Charmé" is active. */
+    val charmedBy: String? = null,
     val exhaustion: Int = 0,
     val notes: String = "",
     val attacks: List<Attack> = emptyList(),
@@ -138,6 +187,14 @@ private val ACTION_BLOCKING_CONDITIONS = setOf("Étourdi", "Inconscient", "Paral
 private val AUTO_FAIL_SAVE_CONDITIONS = setOf("Étourdi", "Inconscient", "Paralysé", "Pétrifié")
 private val DEX_SAVE_DISADVANTAGE_CONDITIONS = setOf("Entravé")
 
+// Attack-roll effects, taken from the same rules text as CONDITION_DESCRIPTIONS above.
+// "À terre" only grants advantage/disadvantage against the creature based on attacker range,
+// which this app doesn't track, so only its unconditional "own attacks" penalty is modeled.
+private val TARGET_ATTACK_ADVANTAGE_CONDITIONS = setOf("Aveuglé", "Entravé", "Étourdi", "Inconscient", "Paralysé", "Pétrifié")
+private val TARGET_ATTACK_DISADVANTAGE_CONDITIONS = setOf("Invisible")
+private val OWN_ATTACK_ADVANTAGE_CONDITIONS = setOf("Invisible")
+private val OWN_ATTACK_DISADVANTAGE_CONDITIONS = setOf("Aveuglé", "Entravé", "Effrayé", "Empoisonné", "À terre")
+
 /** États dont l'effet modifie une donnée affichée sur la fiche de personnage. */
 val CONDITIONS_WITH_DATA_EFFECT: Set<String> = SPEED_ZERO_CONDITIONS + ACTION_BLOCKING_CONDITIONS
 
@@ -147,6 +204,18 @@ fun Character.actionsBlockedByCondition(): Boolean = conditions.any { it in ACTI
 
 fun Character.saveAutoFails(key: SaveKey): Boolean =
     (key == SaveKey.FOR || key == SaveKey.DEX) && conditions.any { it in AUTO_FAIL_SAVE_CONDITIONS }
+
+/** True if attacks made against this character (as the target) have advantage. */
+fun Character.attacksAgainstHaveAdvantage(): Boolean = conditions.any { it in TARGET_ATTACK_ADVANTAGE_CONDITIONS }
+
+/** True if attacks made against this character (as the target) have disadvantage. */
+fun Character.attacksAgainstHaveDisadvantage(): Boolean = conditions.any { it in TARGET_ATTACK_DISADVANTAGE_CONDITIONS }
+
+/** True if this character's own attack rolls have advantage. */
+fun Character.ownAttacksHaveAdvantage(): Boolean = conditions.any { it in OWN_ATTACK_ADVANTAGE_CONDITIONS }
+
+/** True if this character's own attack rolls have disadvantage. */
+fun Character.ownAttacksHaveDisadvantage(): Boolean = conditions.any { it in OWN_ATTACK_DISADVANTAGE_CONDITIONS }
 
 fun Character.saveHasDisadvantage(key: SaveKey): Boolean =
     key == SaveKey.DEX && !saveAutoFails(key) && conditions.any { it in DEX_SAVE_DISADVANTAGE_CONDITIONS }

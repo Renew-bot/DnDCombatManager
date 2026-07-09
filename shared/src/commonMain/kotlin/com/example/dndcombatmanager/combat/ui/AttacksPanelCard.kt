@@ -68,10 +68,12 @@ fun AttacksPanelCard(
     character: Character,
     rolls: Map<String, Map<String, RollResult>>,
     targetingActive: Boolean,
+    pendingAttackId: String?,
     isOwnTurn: Boolean,
     onSave: (String, Attack) -> Unit,
     onDelete: (String, String) -> Unit,
     onUse: (String, Attack) -> Unit,
+    onRollWithoutTarget: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var building by remember(character.id) { mutableStateOf(false) }
@@ -134,13 +136,15 @@ fun AttacksPanelCard(
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     character.attacks.forEach { attack ->
+                        val isPendingThis = pendingAttackId == attack.id
                         AttackCard(
                             attack = attack,
-                            available = character.attackAvailability(attack.cost, isOwnTurn) && !targetingActive,
+                            available = (character.attackAvailability(attack.cost, isOwnTurn) && !targetingActive) || isPendingThis,
+                            pendingNoTarget = isPendingThis,
                             rolled = rolls[attack.id] ?: emptyMap(),
                             onEdit = { startEdit(attack) },
                             onDelete = { onDelete(character.id, attack.id) },
-                            onUse = { onUse(character.id, attack) },
+                            onUse = { if (isPendingThis) onRollWithoutTarget() else onUse(character.id, attack) },
                         )
                     }
                 }
@@ -230,6 +234,7 @@ fun AttacksPanelCard(
 private fun AttackCard(
     attack: Attack,
     available: Boolean,
+    pendingNoTarget: Boolean,
     rolled: Map<String, RollResult>,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -298,7 +303,11 @@ private fun AttackCard(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                if (available) "Utiliser" else "Indisponible",
+                when {
+                    pendingNoTarget -> "Lancer sans cible"
+                    available -> "Utiliser"
+                    else -> "Indisponible"
+                },
                 color = if (available) oklch(0.90f, 0.1f, 75f) else oklch(0.45f, 0.02f, 70f),
                 fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp,
             )
