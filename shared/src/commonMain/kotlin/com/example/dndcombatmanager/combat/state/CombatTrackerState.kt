@@ -316,7 +316,7 @@ class CombatTrackerState {
             results[step.id] = r.copy(text = r.text + suffix)
             r.total?.let { t -> bestTotal = if (bestTotal == null) t else max(bestTotal!!, t) }
         }
-        val hits = bestTotal == null || bestTotal!! >= target.ac
+        val hits = bestTotal == null || bestTotal >= target.ac
         if (hits) {
             var totalDamage = 0
             pending.damageSteps.forEach { step ->
