@@ -27,9 +27,11 @@ L'application est écrite en **Kotlin Multiplatform** avec **Compose Multiplatfo
 ### Fonctionnalités
 
 - **Suivi d'initiative** : les combattants sont automatiquement triés par initiative, avec un compteur de round et un bouton "tour suivant" qui réinitialise les ressources du personnage actif.
-- **Fiches de combattant** : type (Personnage joueur, Monstre, Créature légendaire), points de vie (actuels/max/temporaires), classe d'armure, vitesses (marche, vol, nage, escalade), jets de sauvegarde (FOR/DEX/CON/INT/SAG/CHA).
+- **Fiches de combattant** : type (Personnage joueur, Monstre, Créature légendaire), portrait (image), points de vie (actuels/max/temporaires), classe d'armure, vitesses (marche, vol, nage, escalade), jets de sauvegarde (FOR/DEX/CON/INT/SAG/CHA).
+- **Portraits de personnage** : ajoutez une image à chaque combattant (sélecteur de fichier, ou glisser-déposer sur Bureau), affichée partout dans l'interface.
 - **Économie d'action** : bascule Action / Action bonus / Réaction, ainsi que la gestion des actions légendaires et des résistances légendaires pour les boss.
-- **États et exhaustion** : application des conditions D&D (Aveuglé, Charmé, Effrayé, Empoisonné, Étourdi, Paralysé, etc.) et suivi du niveau d'épuisement (0 à 6).
+- **États et exhaustion, avec effets réels sur les règles** : application des conditions D&D (Aveuglé, Charmé, Effrayé, Empoisonné, Étourdi, Paralysé, etc.) qui ne sont plus cosmétiques — vitesse ramenée à 0, actions bloquées, échec automatique des jets de sauvegarde FOR/DEX selon l'état, suivi du niveau d'épuisement (0 à 6), et une fenêtre d'info par état pour en rappeler les règles exactes (source aidedd.org).
+- **Attaques ciblées** : les attaques peuvent viser un autre combattant présent ; le jet d'attaque (avec détection des coups critiques) applique automatiquement l'avantage/désavantage selon les états de l'attaquant et de la cible (à terre, aveuglé, invisible...), en demandant la distance quand la cible est à terre. Un personnage charmé ne peut pas cibler qui le charme.
 - **Attaques personnalisées** : éditeur d'attaques avec des étapes typées (jet d'attaque, dégâts, autre effet) et un coût en ressource, utilisables directement pendant le combat.
 - **Notes** libres par personnage.
 - **Préréglages (presets)** : sauvegardez un personnage ou un monstre pour le réutiliser dans une future rencontre, ou sauvegardez un combat entier (tous les combattants présents) pour le recharger plus tard.
@@ -118,9 +120,11 @@ The app is built with **Kotlin Multiplatform** and **Compose Multiplatform**: th
 ### Features
 
 - **Initiative tracking**: combatants are automatically sorted by initiative, with a round counter and a "next turn" button that refreshes the active character's resources.
-- **Combatant sheets**: type (Player character, Monster, Legendary creature), hit points (current/max/temporary), armor class, speeds (walk, fly, swim, climb), saving throws (STR/DEX/CON/INT/WIS/CHA).
+- **Combatant sheets**: type (Player character, Monster, Legendary creature), portrait (image), hit points (current/max/temporary), armor class, speeds (walk, fly, swim, climb), saving throws (STR/DEX/CON/INT/WIS/CHA).
+- **Character portraits**: add a picture to any combatant (file picker, or drag-and-drop on Desktop), shown throughout the UI.
 - **Action economy**: toggle Action / Bonus action / Reaction, plus legendary action and legendary resistance tracking for bosses.
-- **Conditions & exhaustion**: apply standard D&D conditions (Blinded, Charmed, Frightened, Poisoned, Stunned, Paralyzed, etc.) and track exhaustion level (0 to 6).
+- **Conditions & exhaustion, with real rules effects**: apply standard D&D conditions (Blinded, Charmed, Frightened, Poisoned, Stunned, Paralyzed, etc.) that now actually affect the rules — speed forced to 0, actions blocked, automatic STR/DEX saving throw failure depending on the condition, exhaustion level tracking (0 to 6), and a per-condition info popup recalling its exact effect (sourced from aidedd.org).
+- **Targeted attacks**: attacks can now target another combatant present in the encounter; the attack roll (with critical hit detection) automatically applies advantage/disadvantage based on both the attacker's and target's conditions (prone, blinded, invisible...), asking for distance when the target is prone. A charmed character can't target whoever charmed them.
 - **Custom attacks**: an attack editor with typed steps (attack roll, damage, other effect) and a resource cost, usable directly during combat.
 - **Free-form notes** per character.
 - **Presets**: save a character or monster to reuse in a future encounter, or save an entire combat (every combatant present) to reload it later.

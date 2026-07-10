@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.dndcombatmanager.combat.platform.imageDropTarget
@@ -62,6 +63,7 @@ fun PortraitBox(
 ) {
     val bitmap = rememberPortraitBitmap(portrait)
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
 
@@ -77,7 +79,17 @@ fun PortraitBox(
                 .imageDropTarget(onImageBytes = onImageBytes)
                 .let { m ->
                     if (imagePortraitPickingSupported) {
-                        m.clickable { scope.launch { pickImageBytes()?.let(onImageBytes) } }
+                        m.clickable {
+                            // Opening the native file picker while a Compose text field still has focus can
+                            // crash the Skiko surface on desktop (focus handoff to the AWT dialog), so drop
+                            // focus first.
+                            focusManager.clearFocus(force = true)
+                            scope.launch {
+                                runCatching { pickImageBytes() }
+                                    .onSuccess { bytes -> bytes?.let(onImageBytes) }
+                                    .onFailure { it.printStackTrace() }
+                            }
+                        }
                     } else m
                 },
             contentAlignment = Alignment.Center,
