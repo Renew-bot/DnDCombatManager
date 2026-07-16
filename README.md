@@ -109,7 +109,7 @@ Un workflow GitHub Actions (`.github/workflows/build-msi.yml`) permet de génér
 
 ---
 
-## 🇬🇧 English (Not yet 😭)
+## 🇬🇧 English
 
 ### What is this?
 

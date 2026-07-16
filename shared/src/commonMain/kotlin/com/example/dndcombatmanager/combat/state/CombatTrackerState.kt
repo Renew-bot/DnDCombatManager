@@ -17,6 +17,8 @@ import com.example.dndcombatmanager.combat.model.ownAttacksHaveAdvantage
 import com.example.dndcombatmanager.combat.model.ownAttacksHaveDisadvantage
 import com.example.dndcombatmanager.combat.model.resolveSaves
 import com.example.dndcombatmanager.combat.model.toOverrides
+import com.example.dndcombatmanager.combat.i18n.Language
+import com.example.dndcombatmanager.combat.i18n.strings
 import com.example.dndcombatmanager.combat.storage.PresetStorage
 import com.example.dndcombatmanager.combat.storage.SavedPresets
 import kotlin.math.max
@@ -38,25 +40,26 @@ data class PendingAttack(
 /** D&D advantage/disadvantage: roll 2d20 and keep the better/worse of the two. */
 enum class RollMode { NORMAL, ADVANTAGE, DISADVANTAGE }
 
-private fun rollAttackStep(text: String, mode: RollMode = RollMode.NORMAL): RollResult {
+private fun rollAttackStep(text: String, mode: RollMode = RollMode.NORMAL, lang: Language): RollResult {
+    val s = lang.strings()
     val mod = Regex("""[+-]\s*\d+""").find(text)?.value?.replace(" ", "")?.toIntOrNull() ?: 0
     val (roll, rollLabel) = when (mode) {
         RollMode.NORMAL -> Random.nextInt(1, 21) to "d20"
         RollMode.ADVANTAGE -> {
             val a = Random.nextInt(1, 21); val b = Random.nextInt(1, 21)
-            max(a, b) to "d20(avantage $a/$b)"
+            max(a, b) to "d20(${s.rollAdvantage(a, b)})"
         }
         RollMode.DISADVANTAGE -> {
             val a = Random.nextInt(1, 21); val b = Random.nextInt(1, 21)
-            min(a, b) to "d20(désavantage $a/$b)"
+            min(a, b) to "d20(${s.rollDisadvantage(a, b)})"
         }
     }
     val total = roll + mod
     val modStr = if (mod == 0) "" else if (mod > 0) "+$mod" else "$mod"
     val crit = if (roll == 20) "success" else if (roll == 1) "fail" else null
     val critTxt = when (crit) {
-        "success" -> " — Critique !"
-        "fail" -> " — Échec critique"
+        "success" -> s.critSuccessSuffix
+        "fail" -> s.critFailSuffix
         else -> ""
     }
     val modSuffix = if (modStr.isNotEmpty()) " $modStr" else ""
@@ -136,6 +139,14 @@ class CombatTrackerState {
 
     private val savedPresets = PresetStorage.load()
 
+    var language by mutableStateOf(runCatching { Language.valueOf(savedPresets.language) }.getOrDefault(Language.FR))
+        private set
+
+    fun changeLanguage(lang: Language) {
+        language = lang
+        persistPresets()
+    }
+
     private var _presets by mutableStateOf(savedPresets.presets)
     var presets: List<CharacterPreset>
         get() = _presets
@@ -179,7 +190,7 @@ class CombatTrackerState {
     }
 
     private fun persistPresets() {
-        PresetStorage.save(SavedPresets(presets = _presets, combatPresets = _combatPresets))
+        PresetStorage.save(SavedPresets(presets = _presets, combatPresets = _combatPresets, language = language.name))
     }
 
     val sortedCharacters: List<Character>
@@ -382,11 +393,12 @@ class CombatTrackerState {
         val pending = pendingAttack ?: return
         val target = characters.find { it.id == targetId } ?: return
         val mode = rollModeFor(pending.attackerId, targetId, proneRangeMeters)
+        val s = language.strings()
         val results = mutableMapOf<String, RollResult>()
         var bestTotal: Int? = null
         pending.attackSteps.forEach { step ->
-            val r = rollAttackStep(step.text, mode)
-            val suffix = r.total?.let { t -> if (t >= target.ac) " — Touché (CA ${target.ac})" else " — Raté (CA ${target.ac})" } ?: ""
+            val r = rollAttackStep(step.text, mode, language)
+            val suffix = r.total?.let { t -> if (t >= target.ac) s.hitSuffix(target.ac) else s.missSuffix(target.ac) } ?: ""
             results[step.id] = r.copy(text = r.text + suffix)
             r.total?.let { t -> bestTotal = if (bestTotal == null) t else max(bestTotal!!, t) }
         }
@@ -407,7 +419,7 @@ class CombatTrackerState {
         val pending = pendingAttack ?: return
         val mode = rollModeFor(pending.attackerId, null)
         val results = mutableMapOf<String, RollResult>()
-        pending.attackSteps.forEach { step -> results[step.id] = rollAttackStep(step.text, mode) }
+        pending.attackSteps.forEach { step -> results[step.id] = rollAttackStep(step.text, mode, language) }
         pending.damageSteps.forEach { step -> rollDamageStep(step.text)?.let { results[step.id] = it } }
         storeRolls(pending.attackerId, pending.attackId, results)
         pendingAttack = null

@@ -35,12 +35,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.dndcombatmanager.combat.i18n.Language
+import com.example.dndcombatmanager.combat.i18n.LocalLanguage
+import com.example.dndcombatmanager.combat.i18n.strings
 import com.example.dndcombatmanager.combat.model.Attack
 import com.example.dndcombatmanager.combat.model.AttackCost
 import com.example.dndcombatmanager.combat.model.AttackStep
 import com.example.dndcombatmanager.combat.model.Character
 import com.example.dndcombatmanager.combat.model.StepType
 import com.example.dndcombatmanager.combat.model.attackAvailability
+import com.example.dndcombatmanager.combat.model.label
 import com.example.dndcombatmanager.combat.model.stepPlaceholder
 import com.example.dndcombatmanager.combat.state.RollResult
 import com.example.dndcombatmanager.combat.theme.Fonts
@@ -48,17 +52,17 @@ import com.example.dndcombatmanager.combat.theme.oklch
 
 internal data class Meta(val color: Color, val bg: Color, val border: Color, val label: String)
 
-internal fun stepMeta(type: StepType): Meta = when (type) {
-    StepType.ATTACK -> Meta(oklch(0.80f, 0.13f, 70f), oklch(0.32f, 0.07f, 70f, 0.35f), oklch(0.55f, 0.11f, 70f, 0.7f), type.label)
-    StepType.DAMAGE -> Meta(oklch(0.78f, 0.13f, 25f), oklch(0.30f, 0.09f, 25f, 0.35f), oklch(0.52f, 0.13f, 25f, 0.7f), type.label)
-    StepType.OTHER -> Meta(oklch(0.78f, 0.06f, 220f), oklch(0.28f, 0.04f, 220f, 0.35f), oklch(0.50f, 0.07f, 220f, 0.7f), type.label)
+internal fun stepMeta(type: StepType, lang: Language): Meta = when (type) {
+    StepType.ATTACK -> Meta(oklch(0.80f, 0.13f, 70f), oklch(0.32f, 0.07f, 70f, 0.35f), oklch(0.55f, 0.11f, 70f, 0.7f), type.label(lang))
+    StepType.DAMAGE -> Meta(oklch(0.78f, 0.13f, 25f), oklch(0.30f, 0.09f, 25f, 0.35f), oklch(0.52f, 0.13f, 25f, 0.7f), type.label(lang))
+    StepType.OTHER -> Meta(oklch(0.78f, 0.06f, 220f), oklch(0.28f, 0.04f, 220f, 0.35f), oklch(0.50f, 0.07f, 220f, 0.7f), type.label(lang))
 }
 
-internal fun costMeta(cost: AttackCost): Meta = when (cost) {
-    AttackCost.ACTION -> Meta(oklch(0.80f, 0.13f, 70f), oklch(0.32f, 0.07f, 70f, 0.35f), oklch(0.55f, 0.11f, 70f, 0.7f), cost.label)
-    AttackCost.BONUS -> Meta(oklch(0.78f, 0.1f, 195f), oklch(0.30f, 0.06f, 195f, 0.35f), oklch(0.52f, 0.09f, 195f, 0.7f), cost.label)
-    AttackCost.REACTION -> Meta(oklch(0.78f, 0.1f, 300f), oklch(0.30f, 0.07f, 300f, 0.35f), oklch(0.52f, 0.1f, 300f, 0.7f), cost.label)
-    AttackCost.LEGENDARY -> Meta(oklch(0.78f, 0.13f, 25f), oklch(0.30f, 0.09f, 25f, 0.35f), oklch(0.52f, 0.13f, 25f, 0.7f), cost.label)
+internal fun costMeta(cost: AttackCost, lang: Language): Meta = when (cost) {
+    AttackCost.ACTION -> Meta(oklch(0.80f, 0.13f, 70f), oklch(0.32f, 0.07f, 70f, 0.35f), oklch(0.55f, 0.11f, 70f, 0.7f), cost.label(lang))
+    AttackCost.BONUS -> Meta(oklch(0.78f, 0.1f, 195f), oklch(0.30f, 0.06f, 195f, 0.35f), oklch(0.52f, 0.09f, 195f, 0.7f), cost.label(lang))
+    AttackCost.REACTION -> Meta(oklch(0.78f, 0.1f, 300f), oklch(0.30f, 0.07f, 300f, 0.35f), oklch(0.52f, 0.1f, 300f, 0.7f), cost.label(lang))
+    AttackCost.LEGENDARY -> Meta(oklch(0.78f, 0.13f, 25f), oklch(0.30f, 0.09f, 25f, 0.35f), oklch(0.52f, 0.13f, 25f, 0.7f), cost.label(lang))
 }
 
 internal data class DraftStep(val type: StepType = StepType.ATTACK, val text: String = "")
@@ -76,6 +80,8 @@ fun AttacksPanelCard(
     onRollWithoutTarget: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val ui = strings()
+    val lang = LocalLanguage.current
     var building by remember(character.id) { mutableStateOf(false) }
     var editingAttackId by remember(character.id) { mutableStateOf<String?>(null) }
     var draftName by remember(character.id) { mutableStateOf("") }
@@ -113,10 +119,10 @@ fun AttacksPanelCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Attaques", color = oklch(0.90f, 0.03f, 75f), fontFamily = Fonts.display, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Text(ui.attacksHeader, color = oklch(0.90f, 0.03f, 75f), fontFamily = Fonts.display, fontWeight = FontWeight.Bold, fontSize = 17.sp)
             if (!building) {
                 PillButton(
-                    text = "+ Attaque", onClick = { startAdd() },
+                    text = ui.addAttackBtn, onClick = { startAdd() },
                     textColor = oklch(0.85f, 0.1f, 70f), background = oklch(0.30f, 0.06f, 70f, 0.35f),
                     borderColor = oklch(0.55f, 0.1f, 70f, 0.6f), fontSize = 12.5.sp,
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp), shape = RoundedCornerShape(8.dp),
@@ -129,7 +135,7 @@ fun AttacksPanelCard(
         if (!building) {
             if (character.attacks.isEmpty()) {
                 Text(
-                    "Aucune attaque enregistrée.", color = oklch(0.50f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 13.sp,
+                    ui.noAttacksRecorded, color = oklch(0.50f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 13.sp,
                     modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp, horizontal = 10.dp),
                     textAlign = TextAlign.Center,
                 )
@@ -152,13 +158,13 @@ fun AttacksPanelCard(
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    FieldLabel("Nom de l'attaque", modifier = Modifier.weight(2f)) {
-                        DarkTextField(value = draftName, onValueChange = { draftName = it }, placeholder = "Ex. Morsure")
+                    FieldLabel(ui.attackNameLabel, modifier = Modifier.weight(2f)) {
+                        DarkTextField(value = draftName, onValueChange = { draftName = it }, placeholder = ui.attackNamePlaceholder)
                     }
-                    FieldLabel("Coûte", modifier = Modifier.weight(1f)) {
+                    FieldLabel(ui.costLabel, modifier = Modifier.weight(1f)) {
                         DarkSelectField(
                             selected = draftCost,
-                            options = AttackCost.entries.map { SelectOption(it, it.label) },
+                            options = AttackCost.entries.map { SelectOption(it, it.label(lang)) },
                             onSelect = { draftCost = it },
                         )
                     }
@@ -168,14 +174,14 @@ fun AttacksPanelCard(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                         DarkSelectField(
                             selected = row.type,
-                            options = StepType.entries.map { SelectOption(it, it.label) },
-                            onSelect = { newType -> draftSteps = draftSteps.mapIndexed { i, s -> if (i == idx) s.copy(type = newType) else s } },
+                            options = StepType.entries.map { SelectOption(it, it.label(lang)) },
+                            onSelect = { newType -> draftSteps = draftSteps.mapIndexed { i, step -> if (i == idx) step.copy(type = newType) else step } },
                             modifier = Modifier.width(128.dp),
                         )
                         DarkTextField(
                             value = row.text,
-                            onValueChange = { text -> draftSteps = draftSteps.mapIndexed { i, s -> if (i == idx) s.copy(text = text) else s } },
-                            placeholder = stepPlaceholder(row.type),
+                            onValueChange = { text -> draftSteps = draftSteps.mapIndexed { i, step -> if (i == idx) step.copy(text = text) else step } },
+                            placeholder = stepPlaceholder(row.type, lang),
                             modifier = Modifier.weight(1f),
                         )
                         Box(
@@ -192,7 +198,7 @@ fun AttacksPanelCard(
                 }
 
                 PillButton(
-                    text = "+ Ajouter une étape",
+                    text = ui.addStepBtn,
                     onClick = { draftSteps = draftSteps + DraftStep() },
                     textColor = oklch(0.70f, 0.02f, 70f), background = Color.Transparent, borderColor = oklch(0.38f, 0.02f, 55f),
                     fontSize = 12.5.sp, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp), shape = RoundedCornerShape(8.dp),
@@ -202,12 +208,12 @@ fun AttacksPanelCard(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Box(modifier = Modifier.weight(1f))
                     PillButton(
-                        text = "Annuler", onClick = { building = false },
+                        text = ui.cancelLabel, onClick = { building = false },
                         textColor = oklch(0.70f, 0.02f, 70f), background = Color.Transparent, borderColor = oklch(0.36f, 0.02f, 55f),
                         fontSize = 13.sp,
                     )
                     GradientPillButton(
-                        text = "Enregistrer",
+                        text = ui.saveBtn,
                         onClick = {
                             val name = draftName.trim()
                             val steps = draftSteps.filter { it.text.isNotBlank() }.mapIndexed { i, s ->
@@ -240,7 +246,9 @@ private fun AttackCard(
     onDelete: () -> Unit,
     onUse: () -> Unit,
 ) {
-    val meta = costMeta(attack.cost)
+    val ui = strings()
+    val lang = LocalLanguage.current
+    val meta = costMeta(attack.cost, lang)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -267,7 +275,7 @@ private fun AttackCard(
         Box(modifier = Modifier.height(8.dp))
         Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
             attack.steps.forEach { step ->
-                val sMeta = stepMeta(step.type)
+                val sMeta = stepMeta(step.type, lang)
                 val roll = rolled[step.id]
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Box(
@@ -304,9 +312,9 @@ private fun AttackCard(
         ) {
             Text(
                 when {
-                    pendingNoTarget -> "Lancer sans cible"
-                    available -> "Utiliser"
-                    else -> "Indisponible"
+                    pendingNoTarget -> ui.rollWithoutTargetBtn
+                    available -> ui.useBtn
+                    else -> ui.unavailableBtn
                 },
                 color = if (available) oklch(0.90f, 0.1f, 75f) else oklch(0.45f, 0.02f, 70f),
                 fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp,

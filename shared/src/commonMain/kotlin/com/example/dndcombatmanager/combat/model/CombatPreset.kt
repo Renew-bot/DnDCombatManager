@@ -1,5 +1,7 @@
 package com.example.dndcombatmanager.combat.model
 
+import com.example.dndcombatmanager.combat.i18n.Language
+import com.example.dndcombatmanager.combat.i18n.strings
 import kotlinx.serialization.Serializable
 
 /** A saved snapshot of a whole roster (an encounter), reloadable to start a fresh combat. */
@@ -10,8 +12,8 @@ data class CombatPreset(
     val characters: List<CharacterPreset>,
 )
 
-fun CombatPreset.metaLabel(): String {
+fun CombatPreset.metaLabel(lang: Language): String {
     val count = characters.size
     val who = characters.joinToString(", ") { it.name }
-    return "$count combattant(s) — $who"
+    return lang.strings().combatPresetMeta(count, who)
 }

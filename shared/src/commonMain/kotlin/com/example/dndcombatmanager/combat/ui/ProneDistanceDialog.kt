@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.dndcombatmanager.combat.i18n.strings
 import com.example.dndcombatmanager.combat.state.CombatTrackerState
 import com.example.dndcombatmanager.combat.theme.Fonts
 import com.example.dndcombatmanager.combat.theme.oklch
@@ -34,11 +35,12 @@ import com.example.dndcombatmanager.combat.theme.oklch
  */
 @Composable
 fun ProneDistanceDialog(state: CombatTrackerState) {
+    val s = strings()
     val targetId = state.pendingProneTargetId ?: return
     val attackerId = state.pendingAttack?.attackerId
     val target = state.characters.find { it.id == targetId }
     val attacker = state.characters.find { it.id == attackerId }
-    var text by remember(targetId) { mutableStateOf("1,50") }
+    var text by remember(targetId) { mutableStateOf(s.distancePlaceholder) }
     val distance = text.replace(",", ".").toDoubleOrNull()
 
     Dialog(onDismissRequest = { state.cancelProneDistance() }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -51,27 +53,26 @@ fun ProneDistanceDialog(state: CombatTrackerState) {
         ) {
             Column {
                 Text(
-                    "${target?.name ?: "La cible"} est à terre", color = oklch(0.88f, 0.05f, 70f), fontFamily = Fonts.body,
+                    s.proneTitle(target?.name ?: s.proneTargetFallback), color = oklch(0.88f, 0.05f, 70f), fontFamily = Fonts.body,
                     fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp),
                 )
                 Text(
-                    "Quelle distance sépare ${attacker?.name ?: "l'attaquant"} de ${target?.name ?: "la cible"} ? " +
-                        "1,50 m ou moins donne l'avantage, plus loin donne le désavantage.",
+                    s.proneQuestion(attacker?.name ?: s.proneAttackerFallback, target?.name ?: s.proneTargetFallback),
                     color = oklch(0.72f, 0.02f, 80f), fontFamily = Fonts.body, fontSize = 13.sp,
                     modifier = Modifier.padding(bottom = 16.dp),
                 )
-                FieldLabel("Distance (m)") {
-                    DarkTextField(value = text, onValueChange = { text = it }, placeholder = "1,50")
+                FieldLabel(s.distanceLabel) {
+                    DarkTextField(value = text, onValueChange = { text = it }, placeholder = s.distancePlaceholder)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
                     Box(modifier = Modifier.weight(1f))
                     PillButton(
-                        text = "Annuler", onClick = { state.cancelProneDistance() },
+                        text = s.cancelLabel, onClick = { state.cancelProneDistance() },
                         textColor = oklch(0.70f, 0.02f, 70f), background = androidx.compose.ui.graphics.Color.Transparent,
                         borderColor = oklch(0.36f, 0.02f, 55f), fontSize = 13.5.sp,
                     )
                     GradientPillButton(
-                        text = "Lancer",
+                        text = s.rollBtn,
                         onClick = { state.confirmProneDistance(distance ?: 1.5) },
                     )
                 }

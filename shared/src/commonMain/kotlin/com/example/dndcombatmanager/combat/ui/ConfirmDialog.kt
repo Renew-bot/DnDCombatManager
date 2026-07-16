@@ -19,12 +19,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.dndcombatmanager.combat.i18n.strings
 import com.example.dndcombatmanager.combat.theme.Fonts
 import com.example.dndcombatmanager.combat.theme.oklch
 
 /** Stands in for the original design's window.confirm(), which has no KMP equivalent. */
 @Composable
-fun ConfirmDialog(message: String, confirmLabel: String = "Confirmer", onConfirm: () -> Unit, onDismiss: () -> Unit) {
+fun ConfirmDialog(message: String, confirmLabel: String = strings().defaultConfirmLabel, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(
             modifier = Modifier
@@ -38,7 +39,7 @@ fun ConfirmDialog(message: String, confirmLabel: String = "Confirmer", onConfirm
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Box(modifier = Modifier.weight(1f))
                     PillButton(
-                        text = "Annuler", onClick = onDismiss,
+                        text = strings().cancelLabel, onClick = onDismiss,
                         textColor = oklch(0.70f, 0.02f, 70f), background = androidx.compose.ui.graphics.Color.Transparent,
                         borderColor = oklch(0.36f, 0.02f, 55f), fontSize = 13.5.sp,
                     )

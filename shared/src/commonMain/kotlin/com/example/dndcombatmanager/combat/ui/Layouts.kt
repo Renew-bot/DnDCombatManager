@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.dndcombatmanager.combat.i18n.strings
 import com.example.dndcombatmanager.combat.model.Character
 import com.example.dndcombatmanager.combat.model.CharacterType
 import com.example.dndcombatmanager.combat.model.healthPct
@@ -46,6 +47,7 @@ private fun isProtectedCharmer(character: Character, protectedCharmerId: String?
 
 @Composable
 private fun TargetingBanner(pending: PendingAttack, onCancel: () -> Unit, modifier: Modifier = Modifier) {
+    val s = strings()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -56,12 +58,12 @@ private fun TargetingBanner(pending: PendingAttack, onCancel: () -> Unit, modifi
             .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
         Text(
-            "Choisissez une cible pour « ${pending.attackName} », ou recliquez sur l'attaque pour lancer sans cible",
+            s.targetingBanner(pending.attackName),
             color = oklch(0.85f, 0.1f, 25f), fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp,
             modifier = Modifier.weight(1f),
         )
         PillButton(
-            text = "Annuler", onClick = onCancel,
+            text = s.cancelLabel, onClick = onCancel,
             textColor = oklch(0.80f, 0.02f, 70f), background = Color.Transparent, borderColor = oklch(0.45f, 0.02f, 55f),
             fontSize = 12.sp, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 5.dp), shape = RoundedCornerShape(7.dp),
         )
@@ -320,7 +322,7 @@ fun FocusLayout(state: CombatTrackerState, isNarrow: Boolean, stackAttacks: Bool
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
-                "AUTRES COMBATTANTS — CLIQUER POUR CONSULTER",
+                strings().othersHeader,
                 color = oklch(0.55f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 11.sp, letterSpacing = 0.7.sp,
                 modifier = Modifier.padding(bottom = 10.dp),
             )

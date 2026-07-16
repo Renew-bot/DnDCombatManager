@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.dndcombatmanager.combat.i18n.strings
 import com.example.dndcombatmanager.combat.state.CombatTrackerState
 import com.example.dndcombatmanager.combat.theme.Fonts
 import com.example.dndcombatmanager.combat.theme.oklch
@@ -29,6 +30,7 @@ import com.example.dndcombatmanager.combat.theme.oklch
 @Composable
 fun SaveCombatDialog(state: CombatTrackerState) {
     if (!state.showSaveCombatDialog) return
+    val s = strings()
 
     Dialog(onDismissRequest = { state.closeSaveCombatDialog() }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(
@@ -49,28 +51,28 @@ fun SaveCombatDialog(state: CombatTrackerState) {
                     .padding(26.dp),
             ) {
                 Text(
-                    "Sauvegarder le combat", color = oklch(0.90f, 0.03f, 75f), fontFamily = Fonts.display, fontWeight = FontWeight.Bold, fontSize = 19.sp,
+                    s.saveCombatTitle, color = oklch(0.90f, 0.03f, 75f), fontFamily = Fonts.display, fontWeight = FontWeight.Bold, fontSize = 19.sp,
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
                 Text(
-                    "Enregistre la liste actuelle de combattants comme preset de combat réutilisable.",
+                    s.saveCombatDesc,
                     color = oklch(0.60f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 13.sp,
                     modifier = Modifier.padding(bottom = 18.dp),
                 )
-                FieldLabel("Nom du preset de combat", modifier = Modifier.fillMaxWidth().padding(bottom = 22.dp)) {
+                FieldLabel(s.combatPresetNameLabel, modifier = Modifier.fillMaxWidth().padding(bottom = 22.dp)) {
                     DarkTextField(
                         value = state.saveCombatName, onValueChange = { state.changeSaveCombatName(it) },
-                        placeholder = "Ex. Embuscade de gobelins",
+                        placeholder = s.combatPresetNamePlaceholder,
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Box(modifier = Modifier.weight(1f))
                     PillButton(
-                        text = "Annuler", onClick = { state.closeSaveCombatDialog() },
+                        text = s.cancelLabel, onClick = { state.closeSaveCombatDialog() },
                         textColor = oklch(0.70f, 0.02f, 70f), background = androidx.compose.ui.graphics.Color.Transparent,
                         borderColor = oklch(0.36f, 0.02f, 55f), fontSize = 13.5.sp,
                     )
-                    GradientPillButton(text = "Sauvegarder", onClick = { state.confirmSaveCombat() })
+                    GradientPillButton(text = s.saveBtn, onClick = { state.confirmSaveCombat() })
                 }
             }
         }

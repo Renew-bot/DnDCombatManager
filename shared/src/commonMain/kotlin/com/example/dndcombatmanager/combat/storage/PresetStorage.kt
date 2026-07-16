@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 data class SavedPresets(
     val presets: List<CharacterPreset> = emptyList(),
     val combatPresets: List<CombatPreset> = emptyList(),
+    val language: String = "FR",
 )
 
 /** Platform-specific storage for character and combat presets. */

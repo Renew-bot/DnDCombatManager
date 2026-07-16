@@ -33,10 +33,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.dndcombatmanager.combat.i18n.LocalLanguage
+import com.example.dndcombatmanager.combat.i18n.strings
 import com.example.dndcombatmanager.combat.model.Attack
 import com.example.dndcombatmanager.combat.model.AttackCost
 import com.example.dndcombatmanager.combat.model.AttackStep
 import com.example.dndcombatmanager.combat.model.StepType
+import com.example.dndcombatmanager.combat.model.label
 import com.example.dndcombatmanager.combat.model.stepPlaceholder
 import com.example.dndcombatmanager.combat.theme.Fonts
 import com.example.dndcombatmanager.combat.theme.oklch
@@ -49,6 +52,8 @@ import com.example.dndcombatmanager.combat.theme.oklch
  */
 @Composable
 fun AttackListEditor(attacks: List<Attack>, onChange: (List<Attack>) -> Unit, modifier: Modifier = Modifier) {
+    val ui = strings()
+    val lang = LocalLanguage.current
     var building by remember { mutableStateOf(false) }
     var editingAttackId by remember { mutableStateOf<String?>(null) }
     var draftName by remember { mutableStateOf("") }
@@ -78,10 +83,10 @@ fun AttackListEditor(attacks: List<Attack>, onChange: (List<Attack>) -> Unit, mo
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SectionLabel("Attaques", modifier = Modifier.padding(bottom = 0.dp))
+            SectionLabel(ui.attacksHeader, modifier = Modifier.padding(bottom = 0.dp))
             if (!building) {
                 PillButton(
-                    text = "+ Attaque", onClick = { startAdd() },
+                    text = ui.addAttackBtn, onClick = { startAdd() },
                     textColor = oklch(0.85f, 0.1f, 70f), background = oklch(0.30f, 0.06f, 70f, 0.35f),
                     borderColor = oklch(0.55f, 0.1f, 70f, 0.6f), fontSize = 12.5.sp,
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp), shape = RoundedCornerShape(8.dp),
@@ -94,7 +99,7 @@ fun AttackListEditor(attacks: List<Attack>, onChange: (List<Attack>) -> Unit, mo
         if (!building) {
             if (attacks.isEmpty()) {
                 Text(
-                    "Aucune attaque pour l'instant.", color = oklch(0.50f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 13.sp,
+                    ui.noAttacksYet, color = oklch(0.50f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 13.sp,
                     modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                 )
             } else {
@@ -111,13 +116,13 @@ fun AttackListEditor(attacks: List<Attack>, onChange: (List<Attack>) -> Unit, mo
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    FieldLabel("Nom de l'attaque", modifier = Modifier.weight(2f)) {
-                        DarkTextField(value = draftName, onValueChange = { draftName = it }, placeholder = "Ex. Morsure")
+                    FieldLabel(ui.attackNameLabel, modifier = Modifier.weight(2f)) {
+                        DarkTextField(value = draftName, onValueChange = { draftName = it }, placeholder = ui.attackNamePlaceholder)
                     }
-                    FieldLabel("Coûte", modifier = Modifier.weight(1f)) {
+                    FieldLabel(ui.costLabel, modifier = Modifier.weight(1f)) {
                         DarkSelectField(
                             selected = draftCost,
-                            options = AttackCost.entries.map { SelectOption(it, it.label) },
+                            options = AttackCost.entries.map { SelectOption(it, it.label(lang)) },
                             onSelect = { draftCost = it },
                         )
                     }
@@ -127,14 +132,14 @@ fun AttackListEditor(attacks: List<Attack>, onChange: (List<Attack>) -> Unit, mo
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                         DarkSelectField(
                             selected = row.type,
-                            options = StepType.entries.map { SelectOption(it, it.label) },
-                            onSelect = { newType -> draftSteps = draftSteps.mapIndexed { i, s -> if (i == idx) s.copy(type = newType) else s } },
+                            options = StepType.entries.map { SelectOption(it, it.label(lang)) },
+                            onSelect = { newType -> draftSteps = draftSteps.mapIndexed { i, step -> if (i == idx) step.copy(type = newType) else step } },
                             modifier = Modifier.width(128.dp),
                         )
                         DarkTextField(
                             value = row.text,
-                            onValueChange = { text -> draftSteps = draftSteps.mapIndexed { i, s -> if (i == idx) s.copy(text = text) else s } },
-                            placeholder = stepPlaceholder(row.type),
+                            onValueChange = { text -> draftSteps = draftSteps.mapIndexed { i, step -> if (i == idx) step.copy(text = text) else step } },
+                            placeholder = stepPlaceholder(row.type, lang),
                             modifier = Modifier.weight(1f),
                         )
                         Box(
@@ -151,7 +156,7 @@ fun AttackListEditor(attacks: List<Attack>, onChange: (List<Attack>) -> Unit, mo
                 }
 
                 PillButton(
-                    text = "+ Ajouter une étape",
+                    text = ui.addStepBtn,
                     onClick = { draftSteps = draftSteps + DraftStep() },
                     textColor = oklch(0.70f, 0.02f, 70f), background = Color.Transparent, borderColor = oklch(0.38f, 0.02f, 55f),
                     fontSize = 12.5.sp, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp), shape = RoundedCornerShape(8.dp),
@@ -161,12 +166,12 @@ fun AttackListEditor(attacks: List<Attack>, onChange: (List<Attack>) -> Unit, mo
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Box(modifier = Modifier.weight(1f))
                     PillButton(
-                        text = "Annuler", onClick = { building = false },
+                        text = ui.cancelLabel, onClick = { building = false },
                         textColor = oklch(0.70f, 0.02f, 70f), background = Color.Transparent, borderColor = oklch(0.36f, 0.02f, 55f),
                         fontSize = 13.sp,
                     )
                     GradientPillButton(
-                        text = "Enregistrer l'attaque",
+                        text = ui.saveAttackBtn,
                         onClick = {
                             val name = draftName.trim()
                             val steps = draftSteps.filter { it.text.isNotBlank() }.mapIndexed { i, s ->
@@ -197,7 +202,7 @@ fun AttackListEditor(attacks: List<Attack>, onChange: (List<Attack>) -> Unit, mo
 
 @Composable
 private fun AttackSummaryRow(attack: Attack, onEdit: () -> Unit, onDelete: () -> Unit) {
-    val meta = costMeta(attack.cost)
+    val meta = costMeta(attack.cost, LocalLanguage.current)
     Column(
         modifier = Modifier
             .fillMaxWidth()

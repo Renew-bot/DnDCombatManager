@@ -35,14 +35,18 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -50,15 +54,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.dndcombatmanager.combat.i18n.Language
+import com.example.dndcombatmanager.combat.i18n.LocalLanguage
+import com.example.dndcombatmanager.combat.i18n.strings
 import com.example.dndcombatmanager.combat.model.CharacterType
 import com.example.dndcombatmanager.combat.state.CombatTrackerState
 import com.example.dndcombatmanager.combat.state.Layout
+import com.example.dndcombatmanager.combat.state.label
 import com.example.dndcombatmanager.combat.theme.Fonts
 import com.example.dndcombatmanager.combat.theme.oklch
 
 @Composable
 fun CombatTrackerScreen() {
     val state = remember { CombatTrackerState() }
+
+    CompositionLocalProvider(LocalLanguage provides state.language) {
+        CombatTrackerContent(state)
+    }
+}
+
+@Composable
+private fun CombatTrackerContent(state: CombatTrackerState) {
+    val s = strings()
 
     BoxWithConstraints(
         modifier = Modifier
@@ -99,31 +116,31 @@ fun CombatTrackerScreen() {
 
     state.pendingDeleteId?.let {
         ConfirmDialog(
-            message = "Retirer ce personnage du combat ?", confirmLabel = "Retirer",
+            message = s.confirmRemoveCharacterMsg, confirmLabel = s.removeLabel,
             onConfirm = { state.confirmDelete() }, onDismiss = { state.cancelDelete() },
         )
     }
     if (state.pendingClearAll) {
         ConfirmDialog(
-            message = "Vider tout le combat ? Cette action est irréversible.", confirmLabel = "Vider",
+            message = s.confirmClearAllMsg, confirmLabel = s.clearBtn,
             onConfirm = { state.confirmClearAll() }, onDismiss = { state.cancelClearAll() },
         )
     }
     state.pendingDeletePresetId?.let {
         ConfirmDialog(
-            message = "Supprimer ce préset ?", confirmLabel = "Supprimer",
+            message = s.confirmDeletePresetMsg, confirmLabel = s.deleteLabel,
             onConfirm = { state.confirmDeletePreset() }, onDismiss = { state.cancelDeletePreset() },
         )
     }
     state.pendingDeleteCombatPresetId?.let {
         ConfirmDialog(
-            message = "Supprimer ce preset de combat ?", confirmLabel = "Supprimer",
+            message = s.confirmDeleteCombatPresetMsg, confirmLabel = s.deleteLabel,
             onConfirm = { state.confirmDeleteCombatPreset() }, onDismiss = { state.cancelDeleteCombatPreset() },
         )
     }
     state.pendingLoadCombatPresetId?.let {
         ConfirmDialog(
-            message = "Charger ce preset de combat ? Le combat actuel sera remplacé.", confirmLabel = "Charger",
+            message = s.confirmLoadCombatPresetMsg, confirmLabel = s.loadLabel,
             onConfirm = { state.confirmLoadCombatPreset() }, onDismiss = { state.cancelLoadCombatPreset() },
         )
     }
@@ -133,6 +150,7 @@ private val CombatTrackerState.hasCharacters: Boolean get() = sortedCharacters.i
 
 @Composable
 private fun Header(state: CombatTrackerState, maxHeight: Dp, isCompact: Boolean) {
+    val s = strings()
     val showJump = state.viewingId != null && state.viewingId != state.activeId &&
         (state.layout == Layout.SIDEBAR || state.layout == Layout.TIMELINE)
 
@@ -150,20 +168,23 @@ private fun Header(state: CombatTrackerState, maxHeight: Dp, isCompact: Boolean)
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Combat Tracker", color = oklch(0.90f, 0.03f, 75f), fontFamily = Fonts.display, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(s.appTitle, color = oklch(0.90f, 0.03f, 75f), fontFamily = Fonts.display, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     Box(
                         modifier = Modifier
                             .background(oklch(0.30f, 0.07f, 70f, 0.35f), RoundedCornerShape(999.dp))
                             .border(BorderStroke(1.dp, oklch(0.55f, 0.1f, 70f, 0.6f)), RoundedCornerShape(999.dp))
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                     ) {
-                        Text("Round ${state.round}", color = oklch(0.85f, 0.1f, 70f), fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp)
+                        Text(s.round(state.round), color = oklch(0.85f, 0.1f, 70f), fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp)
                     }
                 }
-                BurgerMenuButton(state = state, showJump = showJump)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    LanguageSwitch(state)
+                    BurgerMenuButton(state = state, showJump = showJump)
+                }
             }
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 0.dp).padding(bottom = 12.dp)) {
-                GradientPillButton(text = "Tour suivant", onClick = { state.nextTurn() }, fontSize = 13.5.sp, modifier = Modifier.fillMaxWidth(), trailingIcon = Icons.AutoMirrored.Filled.ArrowForward)
+                GradientPillButton(text = s.nextTurn, onClick = { state.nextTurn() }, fontSize = 13.5.sp, modifier = Modifier.fillMaxWidth(), trailingIcon = Icons.AutoMirrored.Filled.ArrowForward)
             }
         } else {
             Row(
@@ -175,18 +196,18 @@ private fun Header(state: CombatTrackerState, maxHeight: Dp, isCompact: Boolean)
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Text("Combat Tracker", color = oklch(0.90f, 0.03f, 75f), fontFamily = Fonts.display, fontWeight = FontWeight.Bold, fontSize = 19.sp)
+                    Text(s.appTitle, color = oklch(0.90f, 0.03f, 75f), fontFamily = Fonts.display, fontWeight = FontWeight.Bold, fontSize = 19.sp)
                     Box(
                         modifier = Modifier
                             .background(oklch(0.30f, 0.07f, 70f, 0.35f), RoundedCornerShape(999.dp))
                             .border(BorderStroke(1.dp, oklch(0.55f, 0.1f, 70f, 0.6f)), RoundedCornerShape(999.dp))
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                     ) {
-                        Text("Round ${state.round}", color = oklch(0.85f, 0.1f, 70f), fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp)
+                        Text(s.round(state.round), color = oklch(0.85f, 0.1f, 70f), fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp)
                     }
                     state.activeCharacter?.let { active ->
                         Row(modifier = Modifier.wrapContentWidth()) {
-                            Text("Actif : ", color = oklch(0.65f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 13.sp, maxLines = 1)
+                            Text(s.activePrefix, color = oklch(0.65f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 13.sp, maxLines = 1)
                             Text(
                                 active.name,
                                 color = if (active.type == CharacterType.PJ) oklch(0.90f, 0.1f, 70f) else oklch(0.85f, 0.1f, 70f),
@@ -197,7 +218,7 @@ private fun Header(state: CombatTrackerState, maxHeight: Dp, isCompact: Boolean)
                     }
                     if (showJump) {
                         PillButton(
-                            text = "Voir le tour actif", onClick = { state.jumpToActive() },
+                            text = s.jumpToActiveTurn, onClick = { state.jumpToActive() },
                             textColor = oklch(0.80f, 0.1f, 70f), background = androidx.compose.ui.graphics.Color.Transparent,
                             borderColor = oklch(0.50f, 0.09f, 70f, 0.7f), fontSize = 12.sp, shape = RoundedCornerShape(999.dp),
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 11.dp, vertical = 4.dp),
@@ -207,6 +228,7 @@ private fun Header(state: CombatTrackerState, maxHeight: Dp, isCompact: Boolean)
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    LanguageSwitch(state)
                     Row(
                         modifier = Modifier
                             .background(oklch(0.21f, 0.02f, 55f), RoundedCornerShape(10.dp))
@@ -223,37 +245,37 @@ private fun Header(state: CombatTrackerState, maxHeight: Dp, isCompact: Boolean)
                                     .padding(horizontal = 13.dp, vertical = 6.dp),
                             ) {
                                 Text(
-                                    l.label, color = if (active) oklch(0.15f, 0.02f, 60f) else oklch(0.65f, 0.02f, 70f),
+                                    l.label(state.language), color = if (active) oklch(0.15f, 0.02f, 60f) else oklch(0.65f, 0.02f, 70f),
                                     fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp,
                                 )
                             }
                         }
                     }
                     PillButton(
-                        text = "Preset de personnages", onClick = { state.openPresets() },
+                        text = s.characterPresetsBtn, onClick = { state.openPresets() },
                         textColor = oklch(0.85f, 0.02f, 80f), background = oklch(0.24f, 0.02f, 55f),
                         borderColor = oklch(0.36f, 0.02f, 55f), fontSize = 13.sp,
                     )
                     PillButton(
-                        text = "Presets de combats", onClick = { state.openCombatPresets() },
+                        text = s.combatPresetsBtn, onClick = { state.openCombatPresets() },
                         textColor = oklch(0.85f, 0.02f, 80f), background = oklch(0.24f, 0.02f, 55f),
                         borderColor = oklch(0.36f, 0.02f, 55f), fontSize = 13.sp,
                     )
                     PillButton(
-                        text = "Sauvegarder combat", onClick = { state.openSaveCombatDialog() },
+                        text = s.saveCombatBtn, onClick = { state.openSaveCombatDialog() },
                         textColor = if (state.hasCharacters) oklch(0.85f, 0.02f, 80f) else oklch(0.45f, 0.02f, 70f),
                         background = oklch(0.24f, 0.02f, 55f),
                         borderColor = oklch(0.36f, 0.02f, 55f), fontSize = 13.sp,
                         enabled = state.hasCharacters,
                     )
                     PillButton(
-                        text = "+ Personnage", onClick = { state.openAddForm() },
+                        text = s.addCharacterBtn, onClick = { state.openAddForm() },
                         textColor = oklch(0.85f, 0.02f, 80f), background = oklch(0.24f, 0.02f, 55f),
                         borderColor = oklch(0.36f, 0.02f, 55f), fontSize = 13.sp,
                     )
-                    GradientPillButton(text = "Tour suivant", onClick = { state.nextTurn() }, fontSize = 13.5.sp, trailingIcon = Icons.AutoMirrored.Filled.ArrowForward)
+                    GradientPillButton(text = s.nextTurn, onClick = { state.nextTurn() }, fontSize = 13.5.sp, trailingIcon = Icons.AutoMirrored.Filled.ArrowForward)
                     PillButton(
-                        text = "Vider", onClick = { state.requestClearAll() },
+                        text = s.clearBtn, onClick = { state.requestClearAll() },
                         textColor = oklch(0.55f, 0.1f, 25f), background = androidx.compose.ui.graphics.Color.Transparent,
                         borderColor = oklch(0.40f, 0.08f, 25f, 0.6f), fontSize = 12.5.sp,
                     )
@@ -264,8 +286,40 @@ private fun Header(state: CombatTrackerState, maxHeight: Dp, isCompact: Boolean)
     }
 }
 
+/** Compact FR/EN toggle for the top bar, persisted via [CombatTrackerState.changeLanguage]. */
+@Composable
+private fun LanguageSwitch(state: CombatTrackerState, modifier: Modifier = Modifier) {
+    val s = strings()
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = modifier) {
+        Text(
+            s.languageToggleFr,
+            color = if (state.language == Language.FR) oklch(0.85f, 0.1f, 70f) else oklch(0.50f, 0.02f, 70f),
+            fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 11.sp,
+        )
+        Switch(
+            checked = state.language == Language.EN,
+            onCheckedChange = { checked -> state.changeLanguage(if (checked) Language.EN else Language.FR) },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = oklch(0.90f, 0.05f, 70f),
+                checkedTrackColor = oklch(0.55f, 0.12f, 70f),
+                checkedBorderColor = oklch(0.70f, 0.13f, 70f),
+                uncheckedThumbColor = oklch(0.80f, 0.02f, 70f),
+                uncheckedTrackColor = oklch(0.24f, 0.02f, 55f),
+                uncheckedBorderColor = oklch(0.36f, 0.02f, 55f),
+            ),
+            modifier = Modifier.scale(0.7f),
+        )
+        Text(
+            s.languageToggleEn,
+            color = if (state.language == Language.EN) oklch(0.85f, 0.1f, 70f) else oklch(0.50f, 0.02f, 70f),
+            fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 11.sp,
+        )
+    }
+}
+
 @Composable
 private fun BurgerMenuButton(state: CombatTrackerState, showJump: Boolean) {
+    val s = strings()
     var expanded by remember { mutableStateOf(false) }
     Box {
         Box(
@@ -280,11 +334,11 @@ private fun BurgerMenuButton(state: CombatTrackerState, showJump: Boolean) {
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             state.activeCharacter?.let { active ->
-                DropdownMenuItem(text = { Text("Actif : ${active.name}", fontWeight = FontWeight.SemiBold) }, onClick = {}, enabled = false)
+                DropdownMenuItem(text = { Text("${s.activePrefix}${active.name}", fontWeight = FontWeight.SemiBold) }, onClick = {}, enabled = false)
             }
             if (showJump) {
                 DropdownMenuItem(
-                    text = { Text("Voir le tour actif") },
+                    text = { Text(s.jumpToActiveTurn) },
                     leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
                     onClick = { state.jumpToActive(); expanded = false },
                 )
@@ -293,7 +347,7 @@ private fun BurgerMenuButton(state: CombatTrackerState, showJump: Boolean) {
             Layout.entries.forEach { l ->
                 val active = state.layout == l
                 DropdownMenuItem(
-                    text = { Text(l.label) },
+                    text = { Text(l.label(state.language)) },
                     leadingIcon = if (active) {
                         { Icon(Icons.Default.Check, contentDescription = null) }
                     } else null,
@@ -301,34 +355,35 @@ private fun BurgerMenuButton(state: CombatTrackerState, showJump: Boolean) {
                 )
             }
             HorizontalDivider()
-            DropdownMenuItem(text = { Text("Preset de personnages") }, onClick = { state.openPresets(); expanded = false })
-            DropdownMenuItem(text = { Text("Presets de combats") }, onClick = { state.openCombatPresets(); expanded = false })
+            DropdownMenuItem(text = { Text(s.characterPresetsBtn) }, onClick = { state.openPresets(); expanded = false })
+            DropdownMenuItem(text = { Text(s.combatPresetsBtn) }, onClick = { state.openCombatPresets(); expanded = false })
             DropdownMenuItem(
-                text = { Text("Sauvegarder combat") }, enabled = state.hasCharacters,
+                text = { Text(s.saveCombatBtn) }, enabled = state.hasCharacters,
                 onClick = { state.openSaveCombatDialog(); expanded = false },
             )
-            DropdownMenuItem(text = { Text("+ Personnage") }, onClick = { state.openAddForm(); expanded = false })
-            DropdownMenuItem(text = { Text("Vider") }, onClick = { state.requestClearAll(); expanded = false })
+            DropdownMenuItem(text = { Text(s.addCharacterBtn) }, onClick = { state.openAddForm(); expanded = false })
+            DropdownMenuItem(text = { Text(s.clearBtn) }, onClick = { state.requestClearAll(); expanded = false })
         }
     }
 }
 
 @Composable
 private fun EmptyState(state: CombatTrackerState) {
+    val s = strings()
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 90.dp, horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            "Aucun combattant", color = oklch(0.70f, 0.03f, 75f), fontFamily = Fonts.display, fontSize = 22.sp,
+            s.emptyStateTitle, color = oklch(0.70f, 0.03f, 75f), fontFamily = Fonts.display, fontSize = 22.sp,
             modifier = Modifier.padding(bottom = 10.dp),
         )
         Text(
-            "Ajoutez les personnages et monstres pour démarrer le combat.", color = oklch(0.55f, 0.02f, 70f),
+            s.emptyStateSubtitle, color = oklch(0.55f, 0.02f, 70f),
             fontFamily = Fonts.body, fontSize = 14.sp, modifier = Modifier.padding(bottom = 18.dp),
         )
         PillButton(
-            text = "+ Ajouter un personnage", onClick = { state.openAddForm() },
+            text = s.emptyStateCta, onClick = { state.openAddForm() },
             textColor = oklch(0.85f, 0.02f, 80f), background = oklch(0.24f, 0.02f, 55f), borderColor = oklch(0.36f, 0.02f, 55f),
         )
     }

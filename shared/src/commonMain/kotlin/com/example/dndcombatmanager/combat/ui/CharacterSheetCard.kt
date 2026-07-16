@@ -43,9 +43,11 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.dndcombatmanager.combat.i18n.LocalLanguage
+import com.example.dndcombatmanager.combat.i18n.conditionLabel
+import com.example.dndcombatmanager.combat.i18n.strings
 import com.example.dndcombatmanager.combat.model.CONDITIONS
 import com.example.dndcombatmanager.combat.model.CONDITIONS_WITH_DATA_EFFECT
-import com.example.dndcombatmanager.combat.model.CONDITION_DESCRIPTIONS
 import com.example.dndcombatmanager.combat.model.Character
 import com.example.dndcombatmanager.combat.model.CharacterType
 import com.example.dndcombatmanager.combat.model.SaveKey
@@ -97,6 +99,8 @@ fun CharacterSheetCard(
     onSetCharmedBy: (String, String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val s = strings()
+    val lang = LocalLanguage.current
     val meta = typeMeta(character.type)
     var amount by remember(character.id) { mutableStateOf("") }
     var presetSaved by remember(character.id) { mutableStateOf(false) }
@@ -146,7 +150,7 @@ fun CharacterSheetCard(
                             Text(character.initiative.toString(), color = oklch(0.80f, 0.14f, 70f), fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
                         }
                         Text(
-                            "Init.",
+                            s.initShort,
                             color = oklch(0.62f, 0.02f, 55f),
                             fontFamily = Fonts.body, fontWeight = FontWeight.Medium, fontSize = 9.sp,
                             modifier = Modifier.padding(top = 2.dp),
@@ -166,13 +170,13 @@ fun CharacterSheetCard(
                                 .border(BorderStroke(1.dp, meta.border), RoundedCornerShape(999.dp))
                                 .padding(horizontal = 9.dp, vertical = 2.dp),
                         ) {
-                            Text(character.type.label(), color = meta.color, fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 10.5.sp)
+                            Text(character.type.label(lang), color = meta.color, fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 10.5.sp)
                         }
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     PillButton(
-                        text = if (presetSaved) "Enregistré" else "Sauvegarder personnage",
+                        text = if (presetSaved) s.presetSaved else s.savePresetBtn,
                         onClick = { onSavePreset(character); presetSaved = true },
                         textColor = if (presetSaved) oklch(0.85f, 0.1f, 145f) else oklch(0.75f, 0.02f, 70f),
                         background = if (presetSaved) oklch(0.30f, 0.06f, 145f, 0.4f) else oklch(0.21f, 0.02f, 55f),
@@ -191,7 +195,7 @@ fun CharacterSheetCard(
             // HP block
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(character.currentHp.toString(), color = oklch(0.94f, 0.02f, 80f), fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = 26.sp)
-                Text("/ ${character.maxHp} PV", color = oklch(0.60f, 0.02f, 70f), fontFamily = Fonts.mono, fontSize = 15.sp)
+                Text(s.hpSuffix(character.maxHp), color = oklch(0.60f, 0.02f, 70f), fontFamily = Fonts.mono, fontSize = 15.sp)
                 if (character.tempHp > 0) {
                     Box(
                         modifier = Modifier
@@ -199,7 +203,7 @@ fun CharacterSheetCard(
                             .border(BorderStroke(1.dp, oklch(0.50f, 0.08f, 210f, 0.6f)), RoundedCornerShape(6.dp))
                             .padding(horizontal = 7.dp, vertical = 1.dp),
                     ) {
-                        Text("+${character.tempHp} temp", color = oklch(0.78f, 0.1f, 210f), fontFamily = Fonts.mono, fontSize = 13.sp)
+                        Text(s.tempHpSuffix(character.tempHp), color = oklch(0.78f, 0.1f, 210f), fontFamily = Fonts.mono, fontSize = 13.sp)
                     }
                 }
             }
@@ -229,21 +233,21 @@ fun CharacterSheetCard(
                     modifier = Modifier.width(64.dp),
                 )
                 PillButton(
-                    text = "− Dégâts",
+                    text = s.damageBtn,
                     onClick = { val n = amount.toIntOrNull() ?: 0; if (n > 0) onDamage(character.id, n) },
                     textColor = oklch(0.85f, 0.1f, 25f), background = oklch(0.28f, 0.09f, 25f, 0.5f),
                     borderColor = oklch(0.48f, 0.14f, 25f, 0.8f), fontSize = 13.sp,
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 7.dp),
                 )
                 PillButton(
-                    text = "+ Soin",
+                    text = s.healBtn,
                     onClick = { val n = amount.toIntOrNull() ?: 0; if (n > 0) onHeal(character.id, n) },
                     textColor = oklch(0.85f, 0.1f, 145f), background = oklch(0.28f, 0.07f, 145f, 0.5f),
                     borderColor = oklch(0.48f, 0.1f, 145f, 0.8f), fontSize = 13.sp,
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 7.dp),
                 )
                 Box(modifier = Modifier.weight(1f))
-                Text("PV TEMP", color = oklch(0.60f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 11.sp, letterSpacing = 0.4.sp)
+                Text(s.tempHpLabel, color = oklch(0.60f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 11.sp, letterSpacing = 0.4.sp)
                 DarkNumberField(
                     value = character.tempHp, onValueChange = { onTempHp(character.id, it) },
                     textAlign = TextAlign.Center, background = oklch(0.19f, 0.02f, 55f), textColor = oklch(0.78f, 0.1f, 210f),
@@ -255,16 +259,16 @@ fun CharacterSheetCard(
 
             // Stat chips: AC + speed
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                StatChip(label = "CA", value = character.ac.toString(), modifier = Modifier.weight(1f))
+                StatChip(label = s.acLabel, value = character.ac.toString(), modifier = Modifier.weight(1f))
                 StatChip(
-                    label = "Vitesse", value = speedText(character), modifier = Modifier.weight(2f), valueFontSize = 14.sp,
+                    label = s.speedLabel, value = speedText(character, lang), modifier = Modifier.weight(2f), valueFontSize = 14.sp,
                     valueColor = if (character.speedForcedToZero()) conditionEffectColor else oklch(0.88f, 0.02f, 80f),
                 )
             }
 
             Spacer(16.dp)
 
-            CollapsibleHeader("Stats", statsExpanded) { statsExpanded = !statsExpanded }
+            CollapsibleHeader(s.statsHeader, statsExpanded) { statsExpanded = !statsExpanded }
             if (statsExpanded) {
                 SaveKey.entries.chunked(6).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
@@ -280,9 +284,9 @@ fun CharacterSheetCard(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(key.label, color = oklch(0.55f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 10.sp)
+                                    Text(key.label(lang), color = oklch(0.55f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 10.sp)
                                     if (autoFail) {
-                                        Text("ÉCHEC", color = conditionEffectColor, fontFamily = Fonts.mono, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text(s.autoFail, color = conditionEffectColor, fontFamily = Fonts.mono, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                     } else {
                                         Row(verticalAlignment = Alignment.Bottom) {
                                             Text(
@@ -298,7 +302,7 @@ fun CharacterSheetCard(
                                             )
                                         }
                                         if (disadvantage) {
-                                            Text("désav.", color = conditionEffectColor, fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 9.sp)
+                                            Text(s.disadvantageShort, color = conditionEffectColor, fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 9.sp)
                                         }
                                     }
                                 }
@@ -310,19 +314,19 @@ fun CharacterSheetCard(
 
             Spacer(16.dp)
 
-            CollapsibleHeader("Ressources du tour", resourcesExpanded) { resourcesExpanded = !resourcesExpanded }
+            CollapsibleHeader(s.resourcesHeader, resourcesExpanded) { resourcesExpanded = !resourcesExpanded }
             if (resourcesExpanded) {
                 val actionsBlocked = character.actionsBlockedByCondition()
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ResourcePill("Action", character.action, blocked = actionsBlocked) { onToggleResource(character.id, ResourceKey.ACTION) }
-                    ResourcePill("Bonus", character.bonus, blocked = actionsBlocked) { onToggleResource(character.id, ResourceKey.BONUS) }
-                    ResourcePill("Réaction", character.reaction, blocked = actionsBlocked) { onToggleResource(character.id, ResourceKey.REACTION) }
+                    ResourcePill(s.actionResource, character.action, blocked = actionsBlocked) { onToggleResource(character.id, ResourceKey.ACTION) }
+                    ResourcePill(s.bonusResource, character.bonus, blocked = actionsBlocked) { onToggleResource(character.id, ResourceKey.BONUS) }
+                    ResourcePill(s.reactionResource, character.reaction, blocked = actionsBlocked) { onToggleResource(character.id, ResourceKey.REACTION) }
                 }
             }
 
             if (character.legendaryMax > 0) {
                 Spacer(16.dp)
-                SectionLabel("Actions légendaires (${character.legendaryCurrent}/${character.legendaryMax})")
+                SectionLabel(s.legendaryActionsHeader(character.legendaryCurrent, character.legendaryMax))
                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     repeat(character.legendaryMax) { i ->
                         val filled = i < character.legendaryCurrent
@@ -339,7 +343,7 @@ fun CharacterSheetCard(
 
             if (character.legendaryResMax > 0) {
                 Spacer(16.dp)
-                SectionLabel("Résistances légendaires (${character.legendaryResCurrent}/${character.legendaryResMax})")
+                SectionLabel(s.legendaryResHeader(character.legendaryResCurrent, character.legendaryResMax))
                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     repeat(character.legendaryResMax) { i ->
                         val filled = i < character.legendaryResCurrent
@@ -356,7 +360,7 @@ fun CharacterSheetCard(
 
             Spacer(16.dp)
 
-            CollapsibleHeader("États", conditionsExpanded) { conditionsExpanded = !conditionsExpanded }
+            CollapsibleHeader(s.conditionsHeader, conditionsExpanded) { conditionsExpanded = !conditionsExpanded }
             var infoCondition by remember { mutableStateOf<String?>(null) }
             if (conditionsExpanded) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
@@ -381,7 +385,7 @@ fun CharacterSheetCard(
                                     }
                                     val hasDataEffect = checked && name in CONDITIONS_WITH_DATA_EFFECT
                                     Text(
-                                        name,
+                                        conditionLabel(name, lang),
                                         color = if (checked) oklch(0.88f, 0.05f, 70f) else oklch(0.65f, 0.02f, 70f),
                                         fontFamily = Fonts.body, fontSize = 13.sp,
                                         fontWeight = if (hasDataEffect) FontWeight.Bold else FontWeight.Normal,
@@ -406,7 +410,7 @@ fun CharacterSheetCard(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.fillMaxWidth().padding(start = 26.dp),
                             ) {
-                                Text("Charmé par", color = oklch(0.60f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 11.5.sp)
+                                Text(s.charmedByLabel, color = oklch(0.60f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 11.5.sp)
                                 DarkSelectField(
                                     selected = character.charmedBy,
                                     options = listOf(SelectOption<String?>(null, "?")) + others.map { SelectOption<String?>(it.id, it.name) },
@@ -420,15 +424,14 @@ fun CharacterSheetCard(
             }
             infoCondition?.let { name ->
                 ConditionInfoDialog(
-                    name = name,
-                    description = CONDITION_DESCRIPTIONS[name].orEmpty(),
+                    conditionId = name,
                     onDismiss = { infoCondition = null },
                 )
             }
 
             Spacer(16.dp)
 
-            CollapsibleHeader("Niveau d'épuisement", exhaustionExpanded) { exhaustionExpanded = !exhaustionExpanded }
+            CollapsibleHeader(s.exhaustionHeader, exhaustionExpanded) { exhaustionExpanded = !exhaustionExpanded }
             if (exhaustionExpanded) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     for (level in 0..6) {
@@ -454,11 +457,11 @@ fun CharacterSheetCard(
             }
 
             Spacer(12.dp)
-            CollapsibleHeader("Notes / Concentration", notesExpanded) { notesExpanded = !notesExpanded }
+            CollapsibleHeader(s.notesHeader, notesExpanded) { notesExpanded = !notesExpanded }
             if (notesExpanded) {
                 DarkTextArea(
                     value = character.notes, onValueChange = { onNotes(character.id, it) },
-                    placeholder = "Sort concentré, tactique, remarque…",
+                    placeholder = s.notesPlaceholder,
                 )
             }
         }
@@ -471,7 +474,7 @@ fun CharacterSheetCard(
                     .background(Brush.linearGradient(listOf(oklch(0.74f, 0.16f, 70f), oklch(0.64f, 0.17f, 55f))), RoundedCornerShape(999.dp))
                     .padding(horizontal = 12.dp, vertical = 4.dp),
             ) {
-                Text("TOUR ACTUEL", color = oklch(0.18f, 0.02f, 60f), fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 0.8.sp)
+                Text(s.activeTurnBadge, color = oklch(0.18f, 0.02f, 60f), fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 0.8.sp)
             }
         }
     }

@@ -1,5 +1,7 @@
 package com.example.dndcombatmanager.combat.model
 
+import com.example.dndcombatmanager.combat.i18n.Language
+import com.example.dndcombatmanager.combat.i18n.strings
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -33,8 +35,18 @@ data class Saves(
     }
 }
 
-enum class SaveKey(val label: String) {
-    FOR("FOR"), DEX("DEX"), CON("CON"), INT("INT"), SAG("SAG"), CHA("CHA")
+enum class SaveKey { FOR, DEX, CON, INT, SAG, CHA }
+
+fun SaveKey.label(lang: Language): String {
+    val s = lang.strings()
+    return when (this) {
+        SaveKey.FOR -> s.saveKeyStr
+        SaveKey.DEX -> s.saveKeyDex
+        SaveKey.CON -> s.saveKeyCon
+        SaveKey.INT -> s.saveKeyInt
+        SaveKey.SAG -> s.saveKeyWis
+        SaveKey.CHA -> s.saveKeyCha
+    }
 }
 
 /** Ability score of 10 (D&D default) for every key. */
@@ -220,16 +232,22 @@ fun Character.ownAttacksHaveDisadvantage(): Boolean = conditions.any { it in OWN
 fun Character.saveHasDisadvantage(key: SaveKey): Boolean =
     key == SaveKey.DEX && !saveAutoFails(key) && conditions.any { it in DEX_SAVE_DISADVANTAGE_CONDITIONS }
 
-fun CharacterType.label(): String = when (this) {
-    CharacterType.PJ -> "Personnage joueur"
-    CharacterType.MONSTRE -> "Monstre"
-    CharacterType.BOSS -> "Créature légendaire"
+fun CharacterType.label(lang: Language): String {
+    val s = lang.strings()
+    return when (this) {
+        CharacterType.PJ -> s.characterTypePlayerFull
+        CharacterType.MONSTRE -> s.characterTypeMonsterFull
+        CharacterType.BOSS -> s.characterTypeLegendaryFull
+    }
 }
 
-fun CharacterType.shortLabel(): String = when (this) {
-    CharacterType.PJ -> "Joueur"
-    CharacterType.MONSTRE -> "Monstre"
-    CharacterType.BOSS -> "Créature légendaire"
+fun CharacterType.shortLabel(lang: Language): String {
+    val s = lang.strings()
+    return when (this) {
+        CharacterType.PJ -> s.characterTypePlayerShort
+        CharacterType.MONSTRE -> s.characterTypeMonsterShort
+        CharacterType.BOSS -> s.characterTypeLegendaryShort
+    }
 }
 
 fun healthPct(currentHp: Int, maxHp: Int): Float =
@@ -237,11 +255,12 @@ fun healthPct(currentHp: Int, maxHp: Int): Float =
 
 fun formatMod(n: Int): String = if (n >= 0) "+$n" else n.toString()
 
-fun speedText(c: Character): String {
-    if (c.speedForcedToZero()) return "0m"
-    val parts = mutableListOf("Marche ${c.speed}m")
-    if (c.speedFly != 0) parts += "Vol ${c.speedFly}m"
-    if (c.speedSwim != 0) parts += "Nage ${c.speedSwim}m"
-    if (c.speedClimb != 0) parts += "Escalade ${c.speedClimb}m"
+fun speedText(c: Character, lang: Language): String {
+    val s = lang.strings()
+    if (c.speedForcedToZero()) return s.speedZero
+    val parts = mutableListOf(s.speedWalk(c.speed))
+    if (c.speedFly != 0) parts += s.speedFly(c.speedFly)
+    if (c.speedSwim != 0) parts += s.speedSwim(c.speedSwim)
+    if (c.speedClimb != 0) parts += s.speedClimb(c.speedClimb)
     return parts.joinToString(" · ")
 }

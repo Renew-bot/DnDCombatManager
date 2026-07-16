@@ -19,11 +19,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.dndcombatmanager.combat.i18n.LocalLanguage
+import com.example.dndcombatmanager.combat.i18n.conditionDescription
+import com.example.dndcombatmanager.combat.i18n.conditionLabel
+import com.example.dndcombatmanager.combat.i18n.strings
 import com.example.dndcombatmanager.combat.theme.Fonts
 import com.example.dndcombatmanager.combat.theme.oklch
 
 @Composable
-fun ConditionInfoDialog(name: String, description: List<String>, onDismiss: () -> Unit) {
+fun ConditionInfoDialog(conditionId: String, onDismiss: () -> Unit) {
+    val lang = LocalLanguage.current
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(
             modifier = Modifier
@@ -34,18 +39,18 @@ fun ConditionInfoDialog(name: String, description: List<String>, onDismiss: () -
         ) {
             Column {
                 Text(
-                    name, color = oklch(0.88f, 0.05f, 70f), fontFamily = Fonts.body,
+                    conditionLabel(conditionId, lang), color = oklch(0.88f, 0.05f, 70f), fontFamily = Fonts.body,
                     fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 12.dp),
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 20.dp)) {
-                    description.forEach { line ->
+                    conditionDescription(conditionId, lang).forEach { line ->
                         Text("•  $line", color = oklch(0.82f, 0.02f, 80f), fontFamily = Fonts.body, fontSize = 13.5.sp)
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Box(modifier = Modifier.weight(1f))
                     PillButton(
-                        text = "Fermer", onClick = onDismiss,
+                        text = strings().closeBtn, onClick = onDismiss,
                         textColor = oklch(0.16f, 0.02f, 60f), background = oklch(0.60f, 0.15f, 25f),
                         fontWeight = FontWeight.Bold, fontSize = 13.5.sp,
                     )

@@ -1,5 +1,7 @@
 package com.example.dndcombatmanager.combat.model
 
+import com.example.dndcombatmanager.combat.i18n.Language
+import com.example.dndcombatmanager.combat.i18n.strings
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -22,8 +24,8 @@ data class CharacterPreset(
     val portrait: String? = null,
 )
 
-fun CharacterPreset.metaLabel(): String =
-    "${type.shortLabel()} · PV $maxHp · CA $ac · ${attacks.size} attaque(s)"
+fun CharacterPreset.metaLabel(lang: Language): String =
+    lang.strings().characterPresetMeta(type.shortLabel(lang), maxHp, ac, attacks.size)
 
 data class CharacterFormData(
     val name: String = "",

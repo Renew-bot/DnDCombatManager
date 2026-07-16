@@ -1,20 +1,32 @@
 package com.example.dndcombatmanager.combat.model
 
+import com.example.dndcombatmanager.combat.i18n.Language
+import com.example.dndcombatmanager.combat.i18n.strings
 import kotlinx.serialization.Serializable
 
 @Serializable
-enum class AttackCost(val label: String) {
-    ACTION("Action"),
-    BONUS("Action bonus"),
-    REACTION("Réaction"),
-    LEGENDARY("Action légendaire"),
+enum class AttackCost { ACTION, BONUS, REACTION, LEGENDARY }
+
+fun AttackCost.label(lang: Language): String {
+    val s = lang.strings()
+    return when (this) {
+        AttackCost.ACTION -> s.costAction
+        AttackCost.BONUS -> s.costBonus
+        AttackCost.REACTION -> s.costReaction
+        AttackCost.LEGENDARY -> s.costLegendary
+    }
 }
 
 @Serializable
-enum class StepType(val label: String) {
-    ATTACK("Jet d'attaque"),
-    DAMAGE("Dégâts"),
-    OTHER("Autre"),
+enum class StepType { ATTACK, DAMAGE, OTHER }
+
+fun StepType.label(lang: Language): String {
+    val s = lang.strings()
+    return when (this) {
+        StepType.ATTACK -> s.stepAttack
+        StepType.DAMAGE -> s.stepDamage
+        StepType.OTHER -> s.stepOther
+    }
 }
 
 @Serializable
@@ -32,10 +44,13 @@ data class Attack(
     val steps: List<AttackStep>,
 )
 
-fun stepPlaceholder(type: StepType): String = when (type) {
-    StepType.ATTACK -> "Ex. +7 pour toucher, portée 1,50 m"
-    StepType.DAMAGE -> "Ex. 2d6+1d8+3 tranchants"
-    StepType.OTHER -> "Ex. DD 18 Force ou agrippé"
+fun stepPlaceholder(type: StepType, lang: Language): String {
+    val s = lang.strings()
+    return when (type) {
+        StepType.ATTACK -> s.stepPlaceholderAttack
+        StepType.DAMAGE -> s.stepPlaceholderDamage
+        StepType.OTHER -> s.stepPlaceholderOther
+    }
 }
 
 /** [isOwnTurn] gates legendary actions, which D&D rules only let a creature spend on someone else's turn. */

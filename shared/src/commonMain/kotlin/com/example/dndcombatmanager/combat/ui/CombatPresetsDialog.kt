@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.dndcombatmanager.combat.i18n.strings
 import com.example.dndcombatmanager.combat.model.metaLabel
 import com.example.dndcombatmanager.combat.state.CombatTrackerState
 import com.example.dndcombatmanager.combat.theme.Fonts
@@ -39,6 +40,7 @@ import com.example.dndcombatmanager.combat.theme.oklch
 @Composable
 fun CombatPresetsDialog(state: CombatTrackerState) {
     if (!state.showCombatPresets) return
+    val s = strings()
 
     Dialog(onDismissRequest = { state.closeCombatPresets() }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(
@@ -63,9 +65,9 @@ fun CombatPresetsDialog(state: CombatTrackerState) {
                     horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 18.dp),
                 ) {
-                    Text("Presets de combats", color = oklch(0.90f, 0.03f, 75f), fontFamily = Fonts.display, fontWeight = FontWeight.Bold, fontSize = 19.sp)
+                    Text(s.combatPresetsTitle, color = oklch(0.90f, 0.03f, 75f), fontFamily = Fonts.display, fontWeight = FontWeight.Bold, fontSize = 19.sp)
                     PillButton(
-                        text = "Fermer", onClick = { state.closeCombatPresets() },
+                        text = s.closeBtn, onClick = { state.closeCombatPresets() },
                         textColor = oklch(0.70f, 0.02f, 70f), background = androidx.compose.ui.graphics.Color.Transparent,
                         borderColor = oklch(0.36f, 0.02f, 55f), fontSize = 13.5.sp,
                     )
@@ -73,7 +75,7 @@ fun CombatPresetsDialog(state: CombatTrackerState) {
 
                 if (state.combatPresets.isEmpty()) {
                     Text(
-                        "Aucun preset de combat enregistré. Cliquez \"Sauvegarder combat\" pour enregistrer la liste actuelle de combattants.",
+                        s.noCombatPresetsMsg,
                         color = oklch(0.50f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 13.sp, textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 30.dp, horizontal = 10.dp),
                     )
@@ -95,12 +97,12 @@ fun CombatPresetsDialog(state: CombatTrackerState) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(preset.name, color = oklch(0.90f, 0.02f, 80f), fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 14.5.sp)
                                     Text(
-                                        preset.metaLabel(), color = oklch(0.60f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 12.sp,
+                                        preset.metaLabel(state.language), color = oklch(0.60f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 12.sp,
                                         maxLines = 2, modifier = Modifier.padding(top = 2.dp),
                                     )
                                 }
                                 GradientPillButton(
-                                    text = "Charger",
+                                    text = s.loadLabel,
                                     onClick = { state.requestLoadCombatPreset(preset.id) },
                                     fontSize = 12.5.sp,
                                     contentPadding = PaddingValues(horizontal = 13.dp, vertical = 7.dp),

@@ -28,10 +28,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.dndcombatmanager.combat.i18n.strings
 import com.example.dndcombatmanager.combat.model.CharacterType
 import com.example.dndcombatmanager.combat.model.SaveKey
 import com.example.dndcombatmanager.combat.model.abilityModifier
 import com.example.dndcombatmanager.combat.model.formatMod
+import com.example.dndcombatmanager.combat.model.label
+import com.example.dndcombatmanager.combat.model.shortLabel
 import com.example.dndcombatmanager.combat.state.CombatTrackerState
 import com.example.dndcombatmanager.combat.theme.Fonts
 import com.example.dndcombatmanager.combat.theme.oklch
@@ -39,6 +42,8 @@ import com.example.dndcombatmanager.combat.theme.oklch
 @Composable
 fun CharacterFormDialog(state: CombatTrackerState) {
     if (!state.showForm) return
+    val s = strings()
+    val lang = state.language
     val fd = state.formData
 
     Dialog(onDismissRequest = { state.closeForm() }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -61,67 +66,63 @@ fun CharacterFormDialog(state: CombatTrackerState) {
                     .padding(26.dp),
             ) {
                 Text(
-                    if (state.editingId != null) "Modifier le personnage" else "Ajouter un personnage",
+                    if (state.editingId != null) s.editCharacterTitle else s.addCharacterTitle,
                     color = oklch(0.90f, 0.03f, 75f), fontFamily = Fonts.display, fontWeight = FontWeight.Bold, fontSize = 19.sp,
                     modifier = Modifier.padding(bottom = 18.dp),
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
-                    FieldLabel("Portrait") {
+                    FieldLabel(s.portraitLabel) {
                         PortraitBox(
                             portrait = fd.portrait,
                             onImageBytes = { bytes -> state.formData = fd.copy(portrait = bytes.toPortraitString()) },
                             onClear = { state.formData = fd.copy(portrait = null) },
                         )
                     }
-                    FieldLabel("Nom", modifier = Modifier.weight(2f)) {
-                        DarkTextField(value = fd.name, onValueChange = { state.formData = fd.copy(name = it) }, placeholder = "Ex. Aeliana")
+                    FieldLabel(s.nameLabel, modifier = Modifier.weight(2f)) {
+                        DarkTextField(value = fd.name, onValueChange = { state.formData = fd.copy(name = it) }, placeholder = s.namePlaceholder)
                     }
-                    FieldLabel("Type", modifier = Modifier.weight(1f)) {
+                    FieldLabel(s.typeLabel, modifier = Modifier.weight(1f)) {
                         DarkSelectField(
                             selected = fd.type,
-                            options = listOf(
-                                SelectOption(CharacterType.PJ, "Joueur"),
-                                SelectOption(CharacterType.MONSTRE, "Monstre"),
-                                SelectOption(CharacterType.BOSS, "Créature légendaire"),
-                            ),
+                            options = CharacterType.entries.map { SelectOption(it, it.shortLabel(lang)) },
                             onSelect = { state.formData = fd.copy(type = it) },
                         )
                     }
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
-                    FieldLabel("Initiative", modifier = Modifier.weight(1f)) {
+                    FieldLabel(s.initiativeLabel, modifier = Modifier.weight(1f)) {
                         DarkNumberField(value = fd.initiative, onValueChange = { state.formData = fd.copy(initiative = it) })
                     }
-                    FieldLabel("PV max", modifier = Modifier.weight(1f)) {
+                    FieldLabel(s.maxHpLabel, modifier = Modifier.weight(1f)) {
                         DarkNumberField(value = fd.maxHp, onValueChange = { state.formData = fd.copy(maxHp = it) })
                     }
-                    FieldLabel("CA", modifier = Modifier.weight(1f)) {
+                    FieldLabel(s.acLabel, modifier = Modifier.weight(1f)) {
                         DarkNumberField(value = fd.ac, onValueChange = { state.formData = fd.copy(ac = it) })
                     }
-                    FieldLabel("Vitesse marche (m)", modifier = Modifier.weight(1f)) {
+                    FieldLabel(s.walkSpeedLabel, modifier = Modifier.weight(1f)) {
                         DarkNumberField(value = fd.speed, onValueChange = { state.formData = fd.copy(speed = it) })
                     }
                 }
 
-                SectionLabel("Vitesses spéciales (0 = aucune)", modifier = Modifier.padding(top = 4.dp))
+                SectionLabel(s.specialSpeedsHeader, modifier = Modifier.padding(top = 4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
-                    FieldLabel("Vol (m)", modifier = Modifier.weight(1f)) {
+                    FieldLabel(s.flySpeedLabel, modifier = Modifier.weight(1f)) {
                         DarkNumberField(value = fd.speedFly, onValueChange = { state.formData = fd.copy(speedFly = it) })
                     }
-                    FieldLabel("Nage (m)", modifier = Modifier.weight(1f)) {
+                    FieldLabel(s.swimSpeedLabel, modifier = Modifier.weight(1f)) {
                         DarkNumberField(value = fd.speedSwim, onValueChange = { state.formData = fd.copy(speedSwim = it) })
                     }
-                    FieldLabel("Escalade (m)", modifier = Modifier.weight(1f)) {
+                    FieldLabel(s.climbSpeedLabel, modifier = Modifier.weight(1f)) {
                         DarkNumberField(value = fd.speedClimb, onValueChange = { state.formData = fd.copy(speedClimb = it) })
                     }
                 }
 
-                SectionLabel("Stats", modifier = Modifier.padding(top = 4.dp))
+                SectionLabel(s.statsHeader, modifier = Modifier.padding(top = 4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
                     SaveKey.entries.forEach { key ->
-                        FieldLabel(key.label, modifier = Modifier.weight(1f)) {
+                        FieldLabel(key.label(lang), modifier = Modifier.weight(1f)) {
                             DarkNumberField(
                                 value = fd.stats.get(key),
                                 onValueChange = { state.formData = fd.copy(stats = fd.stats.with(key, it)) },
@@ -130,10 +131,10 @@ fun CharacterFormDialog(state: CombatTrackerState) {
                     }
                 }
 
-                SectionLabel("Jets de sauvegarde (vide = calculé depuis les stats)", modifier = Modifier.padding(top = 4.dp))
+                SectionLabel(s.savesHeader, modifier = Modifier.padding(top = 4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
                     SaveKey.entries.forEach { key ->
-                        FieldLabel(key.label, modifier = Modifier.weight(1f)) {
+                        FieldLabel(key.label(lang), modifier = Modifier.weight(1f)) {
                             DarkNullableNumberField(
                                 value = fd.saveOverrides.get(key),
                                 onValueChange = { state.formData = fd.copy(saveOverrides = fd.saveOverrides.with(key, it)) },
@@ -144,10 +145,10 @@ fun CharacterFormDialog(state: CombatTrackerState) {
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
-                    FieldLabel("Actions légendaires (max)", modifier = Modifier.weight(1f)) {
+                    FieldLabel(s.legendaryMaxLabel, modifier = Modifier.weight(1f)) {
                         DarkNumberField(value = fd.legendaryMax, onValueChange = { state.formData = fd.copy(legendaryMax = it) })
                     }
-                    FieldLabel("Résistances légendaires (max)", modifier = Modifier.weight(1f)) {
+                    FieldLabel(s.legendaryResMaxLabel, modifier = Modifier.weight(1f)) {
                         DarkNumberField(value = fd.legendaryResMax, onValueChange = { state.formData = fd.copy(legendaryResMax = it) })
                     }
                 }
@@ -174,18 +175,18 @@ fun CharacterFormDialog(state: CombatTrackerState) {
                     ) {
                         if (fd.saveAsPreset) Icon(Icons.Default.Check, contentDescription = null, tint = oklch(0.15f, 0.02f, 60f), modifier = Modifier.size(12.dp))
                     }
-                    Text("Enregistrer aussi comme préset réutilisable", color = oklch(0.75f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 13.sp)
+                    Text(s.saveAsPresetCheckbox, color = oklch(0.75f, 0.02f, 70f), fontFamily = Fonts.body, fontSize = 13.sp)
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Box(modifier = Modifier.weight(1f))
                     PillButton(
-                        text = "Annuler", onClick = { state.closeForm() },
+                        text = s.cancelLabel, onClick = { state.closeForm() },
                         textColor = oklch(0.70f, 0.02f, 70f), background = androidx.compose.ui.graphics.Color.Transparent,
                         borderColor = oklch(0.36f, 0.02f, 55f), fontSize = 13.5.sp,
                     )
                     GradientPillButton(
-                        text = if (state.editingId != null) "Enregistrer" else "Ajouter",
+                        text = if (state.editingId != null) s.saveBtn else s.addBtn,
                         onClick = { state.submitForm() },
                     )
                 }
