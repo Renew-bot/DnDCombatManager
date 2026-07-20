@@ -5,6 +5,7 @@ data class Strings(
     // Header / top bar
     val appTitle: String,
     val round: (Int) -> String,
+    val roundShort: (Int) -> String,
     val nextTurn: String,
     val activePrefix: String,
     val jumpToActiveTurn: String,
@@ -186,6 +187,7 @@ data class Strings(
 val FrStrings = Strings(
     appTitle = "Combat Tracker",
     round = { n -> "Round $n" },
+    roundShort = { n -> "R$n" },
     nextTurn = "Tour suivant",
     activePrefix = "Actif : ",
     jumpToActiveTurn = "Voir le tour actif",
@@ -350,6 +352,7 @@ val FrStrings = Strings(
 val EnStrings = Strings(
     appTitle = "Combat Tracker",
     round = { n -> "Round $n" },
+    roundShort = { n -> "R$n" },
     nextTurn = "Next Turn",
     activePrefix = "Active: ",
     jumpToActiveTurn = "Jump to active turn",

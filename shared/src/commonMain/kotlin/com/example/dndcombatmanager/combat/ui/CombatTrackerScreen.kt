@@ -87,13 +87,21 @@ private fun CombatTrackerContent(state: CombatTrackerState) {
             .windowInsetsPadding(WindowInsets.safeDrawing),
     ) {
         val isNarrow = maxWidth < 880.dp
+        val isVeryNarrow = maxWidth < 480.dp
         val stackAttacks = maxWidth < 1300.dp
         val isHeaderCompact = maxWidth < 1300.dp
         val headerMaxHeight = maxHeight * 0.2f
 
+        // One-time default: phone-width screens open on Focus (one combatant at a time) instead of
+        // Sidebar (list + sheet side by side), which needs more room to be readable. Only applies at
+        // startup — doesn't fight the user if they pick a different layout or resize afterward.
+        LaunchedEffect(Unit) {
+            if (isNarrow) state.changeLayout(Layout.FOCUS)
+        }
+
         Column(modifier = Modifier.fillMaxSize()) {
             state.updateInfo?.let { UpdateBanner(it, state) }
-            Header(state, maxHeight = headerMaxHeight, isCompact = isHeaderCompact)
+            Header(state, maxHeight = headerMaxHeight, isCompact = isHeaderCompact, isVeryNarrow = isVeryNarrow)
 
             Box(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                 when {
@@ -190,7 +198,7 @@ private fun UpdateBanner(info: com.example.dndcombatmanager.combat.update.Update
 }
 
 @Composable
-private fun Header(state: CombatTrackerState, maxHeight: Dp, isCompact: Boolean) {
+private fun Header(state: CombatTrackerState, maxHeight: Dp, isCompact: Boolean, isVeryNarrow: Boolean) {
     val s = strings()
     val showJump = state.viewingId != null && state.viewingId != state.activeId &&
         (state.layout == Layout.SIDEBAR || state.layout == Layout.TIMELINE)
@@ -208,21 +216,31 @@ private fun Header(state: CombatTrackerState, maxHeight: Dp, isCompact: Boolean)
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(s.appTitle, color = oklch(0.90f, 0.03f, 75f), fontFamily = Fonts.display, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f, fill = false),
+                ) {
+                    Text(
+                        s.appTitle, color = oklch(0.90f, 0.03f, 75f), fontFamily = Fonts.display, fontWeight = FontWeight.Bold, fontSize = 18.sp,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
+                    )
                     Box(
                         modifier = Modifier
                             .background(oklch(0.30f, 0.07f, 70f, 0.35f), RoundedCornerShape(999.dp))
                             .border(BorderStroke(1.dp, oklch(0.55f, 0.1f, 70f, 0.6f)), RoundedCornerShape(999.dp))
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                     ) {
-                        Text(s.round(state.round), color = oklch(0.85f, 0.1f, 70f), fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp)
+                        Text(
+                            if (isVeryNarrow) s.roundShort(state.round) else s.round(state.round),
+                            color = oklch(0.85f, 0.1f, 70f), fontFamily = Fonts.mono, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp,
+                        )
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    LanguageSwitch(state)
-                    BurgerMenuButton(state = state, showJump = showJump)
-                }
+                // FR/EN lives in the burger menu here, not inline — on phone-width screens there's no
+                // room left for the switch next to the title/round pill without pushing the menu button
+                // off-screen (it was happening even at max phone width, with the "N" of "EN" clipped).
+                BurgerMenuButton(state = state, showJump = showJump)
             }
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 0.dp).padding(bottom = 12.dp)) {
                 GradientPillButton(text = s.nextTurn, onClick = { state.nextTurn() }, fontSize = 13.5.sp, modifier = Modifier.fillMaxWidth(), trailingIcon = Icons.AutoMirrored.Filled.ArrowForward)
@@ -395,6 +413,17 @@ private fun BurgerMenuButton(state: CombatTrackerState, showJump: Boolean) {
                     onClick = { state.changeLayout(l); expanded = false },
                 )
             }
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = { Text(s.languageToggleFr) },
+                leadingIcon = if (state.language == Language.FR) { { Icon(Icons.Default.Check, contentDescription = null) } } else null,
+                onClick = { state.changeLanguage(Language.FR); expanded = false },
+            )
+            DropdownMenuItem(
+                text = { Text(s.languageToggleEn) },
+                leadingIcon = if (state.language == Language.EN) { { Icon(Icons.Default.Check, contentDescription = null) } } else null,
+                onClick = { state.changeLanguage(Language.EN); expanded = false },
+            )
             HorizontalDivider()
             DropdownMenuItem(text = { Text(s.characterPresetsBtn) }, onClick = { state.openPresets(); expanded = false })
             DropdownMenuItem(text = { Text(s.combatPresetsBtn) }, onClick = { state.openCombatPresets(); expanded = false })
