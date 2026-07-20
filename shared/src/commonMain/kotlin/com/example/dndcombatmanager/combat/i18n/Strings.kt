@@ -16,6 +16,10 @@ data class Strings(
     val languageToggleFr: String,
     val languageToggleEn: String,
 
+    // Update banner
+    val updateAvailableMsg: (String) -> String,
+    val updateDownloadBtn: String,
+
     // Empty state
     val emptyStateTitle: String,
     val emptyStateSubtitle: String,
@@ -193,6 +197,9 @@ val FrStrings = Strings(
     languageToggleFr = "FR",
     languageToggleEn = "EN",
 
+    updateAvailableMsg = { version -> "Nouvelle version disponible : $version" },
+    updateDownloadBtn = "Télécharger",
+
     emptyStateTitle = "Aucun combattant",
     emptyStateSubtitle = "Ajoutez les personnages et monstres pour démarrer le combat.",
     emptyStateCta = "+ Ajouter un personnage",
@@ -353,6 +360,9 @@ val EnStrings = Strings(
     clearBtn = "Clear",
     languageToggleFr = "FR",
     languageToggleEn = "EN",
+
+    updateAvailableMsg = { version -> "New version available: $version" },
+    updateDownloadBtn = "Download",
 
     emptyStateTitle = "No combatants",
     emptyStateSubtitle = "Add characters and monsters to start the combat.",

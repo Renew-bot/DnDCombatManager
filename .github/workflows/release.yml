@@ -115,20 +115,76 @@ jobs:
           name: windows-msi
           path: desktopApp/build/compose/binaries/main/msi/*.msi
 
+  build-web:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build web (JS + Wasm, with JS fallback)
+        run: ./gradlew :webApp:composeCompatibilityBrowserDistribution
+
+      - name: Zip web build
+        run: |
+          cd webApp/build/dist/composeWebCompatibility/productionExecutable
+          zip -r "$GITHUB_WORKSPACE/DnDCombatManager-web.zip" .
+
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: DnDCombatManager-web.zip
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-linux, build-macos, build-windows]
+    needs: [build-linux, build-macos, build-windows, build-web]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Download all artifacts
+      # Downloaded by name (not a blanket "all artifacts" pull) so the jvm-test-report
+      # artifact from the test job never ends up published as a release asset.
+      - name: Download Linux .deb
         uses: actions/download-artifact@v4
         with:
+          name: linux-deb
+          path: dist
+
+      - name: Download Android .apk
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: dist
+
+      - name: Download macOS .dmg
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-dmg
+          path: dist
+
+      - name: Download Windows .msi
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-msi
+          path: dist
+
+      - name: Download web build
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
           path: dist
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/**/*
+          files: dist/*
           generate_release_notes: true

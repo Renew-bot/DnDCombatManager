@@ -43,15 +43,15 @@ L'application est écrite en **Kotlin Multiplatform** avec **Compose Multiplatfo
 
 > Statut de buildabilité **sur cette machine** (Linux, JDK + Android SDK installés).
 
-| Plateforme | Buildable ici             |
-|---|---------------------------|
-| Android | ✅                         |
-| Bureau — exécution (Linux) | ✅                         |
-| Bureau — installeur `.deb` (Linux) | ✅                         |
+| Plateforme | Buildable ici            |
+|---|--------------------------|
+| Android | ✅                        |
+| Bureau — exécution (Linux) | ✅                        |
+| Bureau — installeur `.deb` (Linux) | ✅                        |
 | Bureau — installeur `.msi` (Windows) | ✅ |
-| Bureau — installeur `.dmg` (macOS) | ❌ (pas encore)            |
-| Web (Wasm / JS) | ✅                         |
-| iOS | ❌ (pas encore)            |
+| Bureau — installeur `.dmg` (macOS) | ✅           |
+| Web (Wasm / JS) | ✅                        |
+| iOS | ❌ (pas encore)           |
 
 ### Stack technique
 

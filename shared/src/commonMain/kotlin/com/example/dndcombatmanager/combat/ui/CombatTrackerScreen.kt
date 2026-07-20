@@ -40,6 +40,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,6 +69,8 @@ import com.example.dndcombatmanager.combat.theme.oklch
 fun CombatTrackerScreen() {
     val state = remember { CombatTrackerState() }
 
+    LaunchedEffect(Unit) { state.checkForUpdate() }
+
     CompositionLocalProvider(LocalLanguage provides state.language) {
         CombatTrackerContent(state)
     }
@@ -89,6 +92,7 @@ private fun CombatTrackerContent(state: CombatTrackerState) {
         val headerMaxHeight = maxHeight * 0.2f
 
         Column(modifier = Modifier.fillMaxSize()) {
+            state.updateInfo?.let { UpdateBanner(it, state) }
             Header(state, maxHeight = headerMaxHeight, isCompact = isHeaderCompact)
 
             Box(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
@@ -147,6 +151,43 @@ private fun CombatTrackerContent(state: CombatTrackerState) {
 }
 
 private val CombatTrackerState.hasCharacters: Boolean get() = sortedCharacters.isNotEmpty()
+
+/** Dismissible bar offering to open the latest GitHub release when a newer version is available. */
+@Composable
+private fun UpdateBanner(info: com.example.dndcombatmanager.combat.update.UpdateInfo, state: CombatTrackerState) {
+    val s = strings()
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(oklch(0.30f, 0.07f, 70f, 0.35f))
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+    ) {
+        Text(
+            s.updateAvailableMsg(info.version), color = oklch(0.88f, 0.1f, 70f),
+            fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp,
+            modifier = Modifier.weight(1f),
+        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            GradientPillButton(
+                text = s.updateDownloadBtn,
+                onClick = { com.example.dndcombatmanager.combat.platform.openUrl(info.url) },
+                fontSize = 12.sp,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(7.dp),
+            )
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clickable { state.dismissUpdateBanner() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Default.Close, contentDescription = null, tint = oklch(0.80f, 0.1f, 70f), modifier = Modifier.size(14.dp))
+            }
+        }
+    }
+}
 
 @Composable
 private fun Header(state: CombatTrackerState, maxHeight: Dp, isCompact: Boolean) {

@@ -21,6 +21,8 @@ import com.example.dndcombatmanager.combat.i18n.Language
 import com.example.dndcombatmanager.combat.i18n.strings
 import com.example.dndcombatmanager.combat.storage.PresetStorage
 import com.example.dndcombatmanager.combat.storage.SavedPresets
+import com.example.dndcombatmanager.combat.update.UpdateInfo
+import com.example.dndcombatmanager.combat.update.checkForUpdate as checkForUpdateRemote
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
@@ -123,6 +125,18 @@ class CombatTrackerState {
     var layout by mutableStateOf(Layout.SIDEBAR)
     var modalCharId by mutableStateOf<String?>(null)
         private set
+
+    var updateInfo by mutableStateOf<UpdateInfo?>(null)
+        private set
+
+    /** Checks GitHub for a newer release; call once (e.g. on app start) from a coroutine. */
+    suspend fun checkForUpdate() {
+        updateInfo = checkForUpdateRemote()
+    }
+
+    fun dismissUpdateBanner() {
+        updateInfo = null
+    }
 
     var attackRolls by mutableStateOf<Map<String, Map<String, Map<String, RollResult>>>>(emptyMap())
         private set
