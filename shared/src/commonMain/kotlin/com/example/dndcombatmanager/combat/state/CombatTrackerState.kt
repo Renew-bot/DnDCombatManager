@@ -33,6 +33,7 @@ data class PendingAttack(
     val attackerId: String,
     val attackId: String,
     val attackName: String,
+    val attackCost: AttackCost,
     val attackSteps: List<AttackStep>,
     val damageSteps: List<AttackStep>,
 )
@@ -236,19 +237,19 @@ class CombatTrackerState {
     fun nextTurn() {
         val sorted = sortedCharacters
         if (sorted.isEmpty()) return
+        // Advancing the turn discards any attack that was mid-targeting, so refund its cost rather
+        // than silently losing the attacker's action/bonus/reaction/legendary action.
+        pendingAttack?.let { refundAttackCost(it.attackerId, it.attackCost) }
         val idx = sorted.indexOfFirst { it.id == activeId }
         val nextIdx = if (idx == -1) 0 else (idx + 1) % sorted.size
         var newRound = round
-        var newCharacters = characters
-        if (nextIdx == 0) {
-            newRound += 1
-            newCharacters = newCharacters.map { it.copy(legendaryCurrent = it.legendaryMax) }
-        }
+        if (nextIdx == 0) newRound += 1
         val nextChar = sorted[nextIdx]
-        newCharacters = newCharacters.map {
-            if (it.id == nextChar.id) it.copy(action = true, bonus = true, reaction = true) else it
+        // Legendary actions regain "at the start of its turn" (D&D 5e), not for every creature at
+        // once when the round wraps — only the character whose turn is now starting refills.
+        characters = characters.map {
+            if (it.id == nextChar.id) it.copy(action = true, bonus = true, reaction = true, legendaryCurrent = it.legendaryMax) else it
         }
-        characters = newCharacters
         round = newRound
         activeId = nextChar.id
         viewingId = null
@@ -324,6 +325,16 @@ class CombatTrackerState {
         }
     }
 
+    /** Reverses [handleUseAttack] — used when a pending attack is discarded without ever being rolled. */
+    private fun refundAttackCost(charId: String, cost: AttackCost) = updateChar(charId) { c ->
+        when (cost) {
+            AttackCost.ACTION -> c.copy(action = true)
+            AttackCost.BONUS -> c.copy(bonus = true)
+            AttackCost.REACTION -> c.copy(reaction = true)
+            AttackCost.LEGENDARY -> c.copy(legendaryCurrent = min(c.legendaryMax, c.legendaryCurrent + 1))
+        }
+    }
+
     fun rollsFor(charId: String): Map<String, Map<String, RollResult>> = attackRolls[charId] ?: emptyMap()
 
     private fun storeRolls(charId: String, attackId: String, results: Map<String, RollResult>) {
@@ -337,7 +348,7 @@ class CombatTrackerState {
         if (pendingAttack != null) return
         handleUseAttack(charId, attack.cost)
         pendingAttack = PendingAttack(
-            attackerId = charId, attackId = attack.id, attackName = attack.name,
+            attackerId = charId, attackId = attack.id, attackName = attack.name, attackCost = attack.cost,
             attackSteps = attack.steps.filter { it.type == StepType.ATTACK },
             damageSteps = attack.steps.filter { it.type == StepType.DAMAGE },
         )
@@ -426,6 +437,7 @@ class CombatTrackerState {
     }
 
     fun cancelAttack() {
+        pendingAttack?.let { refundAttackCost(it.attackerId, it.attackCost) }
         pendingAttack = null
         pendingProneTargetId = null
     }

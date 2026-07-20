@@ -142,7 +142,7 @@ The app is built with **Kotlin Multiplatform** and **Compose Multiplatform**: th
 | Desktop — run (Linux) | ✅                         |
 | Desktop — `.deb` installer (Linux) | ✅                         |
 | Desktop — `.msi` installer (Windows) | ✅  |
-| Desktop — `.dmg` installer (macOS) | ❌ (not yet)               |
+| Desktop — `.dmg` installer (macOS) | ✅               |
 | Web (Wasm / JS) | ✅                         |
 | iOS | ❌ (not yet)               |
 
